@@ -1,0 +1,36 @@
+# ESC_Wear Root Configuration
+RewriteEngine On
+
+# --------------------------------
+# FORCE NON-WWW (important)
+# --------------------------------
+RewriteCond %{HTTP_HOST} ^www\.escwear\.com [NC]
+RewriteRule ^(.*)$ https://escwear.com/$1 [L,R=301]
+
+# --------------------------------
+# UPLOADS (images)
+# --------------------------------
+RewriteRule ^uploads/(.*)$ backend/public/uploads/$1 [L]
+
+# --------------------------------
+# API ROUTES
+# --------------------------------
+RewriteRule ^api/(.*)$ backend/public/index.php [L,QSA]
+
+# --------------------------------
+# FRONTEND (React)
+# --------------------------------
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+
+# --------------------------------
+# SECURITY
+# --------------------------------
+<IfModule mod_headers.c>
+Header set X-Frame-Options "SAMEORIGIN"
+Header set X-Content-Type-Options "nosniff"
+Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+Options -Indexes

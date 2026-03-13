@@ -1,0 +1,192 @@
+/* ESC Logo Animation Screen */
+.animation-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0a4834 0%, #2b6c64 100%); /* Updated Palette Gradient */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  transition:
+    opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.8s;
+}
+
+.animation-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.logo-container {
+  /* margin-bottom: 3rem; */
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+.esc-logo {
+  width: 200px;
+  height: auto;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+  /* animation: logoEntrance 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; */
+}
+.esc-logo-animation {
+  width: 100px;
+  height: auto;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+  animation: logoEntrance 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes logoEntrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-180deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(10deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes logoPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Slogan Text */
+.slogan-text {
+  display: flex;
+  gap: 1rem;
+  /* margin-bottom: 3rem; */
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.brand-text {
+  font-size: 4rem;
+  font-weight: 700;
+  color: white;
+  /* text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); */
+  opacity: 0;
+  transform: translateY(30px);
+  animation: wordFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  margin: 0;
+  padding-bottom: 10px;
+  letter-spacing: 22px;
+}
+.slogan-word {
+  font-size: 1rem;
+  font-weight: 300;
+  color: white; /* Updated text color */
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(30px);
+  animation: wordFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slogan-word-1 {
+  animation-delay: 0.5s;
+}
+
+.slogan-word-2 {
+  animation-delay: 0.7s;
+}
+
+.slogan-word-3 {
+  animation-delay: 0.9s;
+}
+
+@keyframes wordFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Professional Loading Dots */
+/* .professional-loading {
+  margin-top: 4rem;
+} */
+
+.loading-dots {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cbbfa4; /* Updated dot color */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  animation: dotBounce 1.4s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+.dot-1 {
+  animation-delay: 1.2s;
+}
+
+.dot-2 {
+  animation-delay: 1.4s;
+}
+
+.dot-3 {
+  animation-delay: 1.6s;
+}
+
+@keyframes dotBounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  40% {
+    transform: translateY(-20px) scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .esc-logo-animation {
+    width: 150px;
+  }
+
+  .slogan-word {
+    font-size: 2rem;
+  }
+
+  .slogan-text {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .esc-logo-animation {
+    width: 120px;
+  }
+
+  .slogan-word {
+    font-size: 1.5rem;
+  }
+
+  .logo-container {
+    margin-bottom: 2rem;
+  }
+
+  .slogan-text {
+    margin-bottom: 2rem;
+  }
+}

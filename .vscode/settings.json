@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "[php]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "bmewburn.vscode-intelephense-client"
+    },
+    "intelephense.environment.includePaths": [
+        "./backend/app",
+        "./backend/vendor"
+    ]
+}

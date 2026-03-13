@@ -1,0 +1,403 @@
+/* About Hero */
+.about-hero {
+  background: #ffffff;
+  padding: 6rem 2rem;
+  text-align: center;
+  color: #000;
+}
+
+.about-hero h1 {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.about-hero p {
+  font-size: 1.4rem;
+  opacity: 0.9;
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+/* Mission Section */
+.mission-section {
+  padding: 10rem 2rem 6rem;
+  background-color: var(--esc-bg);
+}
+
+.mission-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 4rem;
+  align-items: start;
+}
+
+.mission-content {
+  animation: fadeInLeft 0.8s ease-out;
+}
+
+.mission-content h2 {
+  font-size: 3rem;
+  color: #000;
+  margin-bottom: 1.8rem;
+}
+
+.mission-content p {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #333;
+  margin-bottom: 0.8rem;
+  text-align: justify;
+}
+
+.mission-image {
+  position: sticky;
+  top: 120px;
+  animation: fadeInRight 0.8s ease-out;
+}
+
+.mission-image img {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Values Section */
+.values-section {
+  padding: 6rem 2rem;
+  background: #f8f8f8;
+}
+
+.values-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.values-container h2 {
+  font-size: 2.5rem;
+  color: #000;
+  margin-bottom: 3rem;
+}
+
+.values-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.value-card {
+  background-color: var(--esc-bg);
+  padding: 2.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  animation: fadeInUp 0.6s ease-out;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.value-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.value-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  color: #000;
+  transition: all 0.3s ease;
+}
+
+.value-card:hover .value-icon {
+  background: #000;
+  color: white;
+  transform: scale(1.1);
+}
+
+.value-card h3 {
+  color: #000;
+  margin-bottom: 1.2rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.value-card p {
+  color: #333;
+  line-height: 1.6;
+  font-size: 1.05rem;
+}
+
+/* Values list styling */
+.values-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  text-align: left;
+  margin-top: 0.5rem;
+}
+
+.values-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.value-item {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 0.5rem;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+  flex: 1;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.value-item:hover {
+  background-color: #f0f0f0;
+  transform: translateY(-2px);
+}
+
+.value-name {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Community Section */
+.community-section {
+  padding: 6rem 2rem;
+  background: #000;
+  color: white;
+}
+
+.community-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.community-content {
+  animation: fadeInLeft 0.8s ease-out;
+}
+
+.community-content h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.community-content p {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+}
+
+.community-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.stat h3 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat p {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.community-image {
+  position: relative;
+  animation: fadeInRight 0.8s ease-out;
+}
+
+.community-image img {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.cta-btn {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background-color: var(--esc-bg);
+  color: #000;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.cta-btn:hover {
+  background: #f8f8f8;
+  transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .mission-container,
+  .community-container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .mission-image {
+    position: relative;
+    top: 0;
+    order: -1;
+  }
+
+  .values-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .about-hero {
+    padding: 4rem 1rem;
+  }
+
+  .about-hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .about-hero p {
+    font-size: 1.2rem;
+  }
+
+  .mission-section,
+  .values-section,
+  .community-section {
+    padding: 4rem 1rem;
+  }
+
+  .mission-content h2,
+  .community-content h2 {
+    font-size: 2rem;
+  }
+
+  .mission-content p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .values-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .community-stats {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .value-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .value-icon {
+    width: 70px;
+    height: 70px;
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .about-hero h1 {
+    font-size: 2rem;
+  }
+
+  .about-hero p {
+    font-size: 1rem;
+  }
+
+  .mission-content h2,
+  .community-content h2 {
+    font-size: 1.8rem;
+  }
+
+  .value-card {
+    padding: 1.5rem;
+  }
+
+  .value-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 1.2rem;
+  }
+
+  .value-card h3 {
+    font-size: 1.3rem;
+  }
+
+  .value-number {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .value-name {
+    font-size: 1rem;
+  }
+
+  .values-row {
+    flex-direction: column;
+  }
+
+  .value-item {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}

@@ -1,0 +1,23 @@
+# robots.txt for ESC Wear
+
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /backend/
+
+# Allow important pages
+Allow: /
+Allow: /products
+Allow: /collections
+Allow: /products/*
+
+# Sitemap location
+Sitemap: https://escwear.com/sitemap.xml
+
+# Crawl delay (optional - helps prevent server overload)
+Crawl-delay: 1
+

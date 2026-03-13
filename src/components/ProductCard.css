@@ -1,0 +1,159 @@
+/* ESC palette for card */
+
+/* Enhanced Product Card (no size hover) */
+.product-card-enhanced {
+  border: 1px solid rgba(11, 18, 19, 0.06);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+
+/* Image Container */
+.card-image-container {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #0b5751 0%, #0b1213 60%);
+}
+
+/* Image wrapper and images */
+.card-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); */
+}
+
+.product-card-enhanced:hover .card-image-wrapper {
+  /* transform: scale(1.03); */
+}
+
+.card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 0.4s ease,
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-image.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Content area */
+.card-content {
+  padding: 0.9rem 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+}
+
+/* Title & Price */
+.card-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--esc-text);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.card-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.card-price {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--esc-primary-dark);
+  margin: 0;
+}
+
+.card-old-price {
+  font-size: 0.85rem;
+  color: rgba(11, 18, 19, 0.5);
+  text-decoration: line-through;
+}
+
+/* Rating row */
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: rgba(11, 18, 19, 0.7);
+}
+
+.card-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.card-stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.card-star {
+  font-size: 0.8rem;
+  color: rgba(203, 191, 164, 0.5); /* muted */
+}
+
+.card-star.filled {
+  color: var(--esc-accent); /* main teal */
+}
+
+.card-reviews {
+  font-size: 0.75rem;
+  color: rgba(11, 18, 19, 0.65);
+}
+
+/* Optional small label (e.g., category / tag) */
+.card-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: rgba(74, 175, 163, 0.08);
+  color: var(--esc-primary-dark);
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .product-card-enhanced {
+    height: 380px;
+  }
+
+  .card-image-container {
+    height: 260px;
+  }
+
+  .card-content {
+    padding: 0.8rem 0.9rem 1rem;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+  }
+
+  .card-price {
+    font-size: 1rem;
+  }
+}

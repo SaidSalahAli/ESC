@@ -1,0 +1,29 @@
+# ESC_Wear Backend - Apache Configuration
+
+RewriteEngine On
+
+# Redirect to public folder
+
+RewriteRule ^$ public/ [L]
+RewriteRule (.\*) public/$1 [L]
+
+# Security Headers
+
+<IfModule mod_headers.c>
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self'"
+</IfModule>
+
+# Prevent directory listing
+
+Options -Indexes
+
+# Protect sensitive files
+
+<FilesMatch "(\.env|\.git|composer\.json|composer\.lock)$">
+Order allow,deny
+Deny from all
+</FilesMatch>
