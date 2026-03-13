@@ -156,20 +156,20 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
                   {user?.phone && (
                     <>
                       <br />
-                     رقم الهاتف :  <span style={{ fontSize: '0.78rem', color: '#444' }}>{user.phone}</span>
+                      رقم الهاتف : <span style={{ fontSize: '0.78rem', color: '#444' }}>{user.phone}</span>
                     </>
                   )}
                   {user?.email && (
                     <>
                       <br />
-                     البريد الإلكتروني :  <span style={{ fontSize: '0.72rem', color: '#666' }}>{user.email}</span>
+                      البريد الإلكتروني : <span style={{ fontSize: '0.72rem', color: '#666' }}>{user.email}</span>
                     </>
                   )}
                 </td>
                 <td style={{ ...cell({ width: '33%', borderTop: 'none' }), borderLeft: '1px solid #000' }}>
                   <br />
                   <span style={{ fontSize: '0.85rem', display: 'flex', gap: 6 }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>المدينة / المنطقة:</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>المدينة / المحافظة:</span>
                     <div>
                       <span style={{ fontSize: '0.85rem' }}>{addr?.city || '—'}</span>
                       {addr?.state && <span style={{ fontSize: '0.85rem' }}> / {addr.state}</span>}
@@ -244,9 +244,6 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
                 </th>
                 <th style={{ ...cell({ borderTop: 'none', width: '12%', textAlign: 'center', fontSize: '0.8rem' }) }}>الكمية</th>
                 <th style={{ ...cell({ borderTop: 'none', width: '18%', textAlign: 'center', fontSize: '0.8rem' }) }}>السعر</th>
-                <th style={{ ...cell({ borderTop: 'none', borderLeft: 'none', width: '18%', textAlign: 'center', fontSize: '0.8rem' }) }}>
-                  مرتجع / الإجمالي
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -259,9 +256,6 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
                   </td>
                   <td style={{ ...cell({ textAlign: 'center', fontSize: '0.82rem' }) }}>{item.quantity}</td>
                   <td style={{ ...cell({ textAlign: 'center', fontSize: '0.82rem' }) }}>{parseFloat(item.price).toFixed(2)} ج</td>
-                  <td style={{ ...cell({ borderLeft: 'none', textAlign: 'center', fontSize: '0.82rem' }) }}>
-                    {(parseFloat(item.price) * item.quantity).toFixed(2)} ج
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -288,7 +282,7 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
                     </Typography>
                   </Box>
                 </td>
-                <td style={{ ...cell({ borderTop: 'none', fontSize: '0.82rem', width: '25%' }) }}>الإجمالي الفرعي</td>
+                <td style={{ ...cell({ borderTop: 'none', fontSize: '0.82rem', width: '25%' }) }}>الإجمالي</td>
               </tr>
               <tr>
                 <td style={{ ...cell({ fontSize: '0.82rem' }) }}>مصاريف الشحن</td>
@@ -305,7 +299,7 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
                 </tr>
               )}
               <tr>
-                <td style={{ ...cell({ fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#ececec' }) }}>المبالغ المدفوعة</td>
+                <td style={{ ...cell({ fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#ececec' }) }}>المبالغ المطلوب للدفع</td>
                 <td
                   style={{
                     ...cell({ borderLeft: 'none', textAlign: 'center', fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#ececec' })
@@ -319,9 +313,7 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
 
           {/* ── Footer ── */}
           <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid #ccc', textAlign: 'center', pb: 1 }}>
-            <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.75rem', color: '#555' }}>
-              شكراً لتسوقك مع ESC WEAR — للاستفسارات يرجى التواصل معنا
-            </Typography>
+            <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.75rem', color: '#555' }}>شكراً لتسوقك مع ESC WEAR</Typography>
           </Box>
         </Box>
       </Box>
