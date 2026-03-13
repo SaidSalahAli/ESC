@@ -3,133 +3,71 @@ import JsBarcode from 'jsbarcode';
 import { Box, Button, Typography, Paper } from '@mui/material';
 import { Printer } from 'iconsax-react';
 
-/**
- * Order Barcode Print Component
- * Displays and prints barcode for an order
- */
 function OrderBarcodePrint({ order, onClose }) {
   const barcodeRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (barcodeRef.current && order?.order_number) {
-        try {
-          const barcodeValue = order.order_number.toString().trim();
-          
-          if (!barcodeValue || barcodeValue.length === 0) {
-            console.error('Invalid order number');
-            return;
-          }
-          
-          barcodeRef.current.innerHTML = '';
-          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          barcodeRef.current.appendChild(svg);
-          
-          JsBarcode(svg, barcodeValue, {
-            format: 'CODE128',
-            width: 2,
-            height: 80,
-            displayValue: true,
-            fontSize: 16,
-            margin: 10,
-            background: '#ffffff',
-            lineColor: '#000000'
-          });
-        } catch (error) {
-          console.error('Error generating barcode:', error);
-          if (barcodeRef.current) {
-            barcodeRef.current.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-          }
-        }
+      if (!barcodeRef.current || !order?.order_number) return;
+      try {
+        const value = order.order_number.toString().trim();
+        barcodeRef.current.innerHTML = '';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        barcodeRef.current.appendChild(svg);
+        JsBarcode(svg, value, {
+          format: 'CODE128',
+          width: 3,
+          height: 120,
+          displayValue: true,
+          fontSize: 18,
+          margin: 8,
+          background: '#ffffff',
+          lineColor: '#000000'
+        });
+        svg.setAttribute('width', '100%');
+        svg.removeAttribute('height');
+      } catch (err) {
+        console.error('Barcode error:', err);
       }
     }, 100);
-
     return () => clearTimeout(timer);
   }, [order?.order_number]);
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const barcodeSvg = barcodeRef.current?.innerHTML || '';
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Print Order Barcode - ${order?.order_number || 'Order'}</title>
-          <style>
-            @media print {
-              @page {
-                size: 3.5in 2in;
-                margin: 0.2in;
-              }
-              body {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-              }
-            }
-            body {
-              margin: 0;
-              padding: 20px;
-              font-family: Arial, sans-serif;
-            }
-            .barcode-container {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              width: 100%;
-            }
-            .barcode-label {
-              text-align: center;
-              margin-bottom: 10px;
-              font-size: 12px;
-              font-weight: bold;
-            }
-            .barcode-svg {
-              margin: 0 auto;
-              text-align: center;
-            }
-            .barcode-svg svg {
-              max-width: 100%;
-              height: auto;
-            }
-            .order-info {
-              text-align: center;
-              margin-top: 10px;
-              font-size: 10px;
-            }
-            .order-info div {
-              margin: 2px 0;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="barcode-container">
-            <div class="barcode-label">
-              <strong>Order: ${order.order_number}</strong>
-            </div>
-            <div class="barcode-svg">
-              ${barcodeSvg}
-            </div>
-            <div class="order-info">
-              <div>Order Number: ${order.order_number}</div>
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Print - ${order?.order_number}</title>
+  <style>
+    @page { size: 50mm 25mm; margin: 0; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; width:50mm; height:25mm; display:flex; align-items:center; justify-content:center; }
+    .container { width:50mm; height:25mm; padding:1mm; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .brand { font-size:6px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#444; margin-bottom:0.5mm; }
+    .order-num { font-size:8px; font-weight:700; margin-bottom:0.5mm; }
+    .bc-wrap { width:48mm; }
+    .bc-wrap svg { width:100%; height:auto; display:block; }
+    .order-info { font-size:6px; color:#000; margin-top:0.5mm; display:flex; flex-direction:column; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="order-num">${order.order_number}</div>
+    <div class="bc-wrap">${barcodeSvg}</div>
+      <div class="order-info">
               <div>Date: ${new Date(order.created_at).toLocaleDateString()}</div>
               <div>Total: ${order.total} ${order.currency || 'EGP'}</div>
             </div>
-          </div>
-        </body>
-      </html>
-    `);
-    
+  </div>
+</body>
+</html>`);
     printWindow.document.close();
-    
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    setTimeout(() => printWindow.print(), 300);
   };
 
-  if (!order || !order.order_number) {
+  if (!order?.order_number) {
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
         <Typography color="error">No order number available</Typography>
@@ -139,62 +77,34 @@ function OrderBarcodePrint({ order, onClose }) {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          Order: {order.order_number}
+      <Paper variant="outlined" sx={{ maxWidth: 340, mx: 'auto', p: 2, borderRadius: 2, textAlign: 'center' }}>
+        <Typography sx={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: 2, color: '#888', textTransform: 'uppercase', mb: 0.5 }}>
+          ESC WEAR
         </Typography>
-        
-        <Box sx={{ 
-          my: 2, 
-          display: 'flex', 
-          justifyContent: 'center',
-          minHeight: '120px',
-          alignItems: 'center'
-        }}>
-          <div 
-            ref={barcodeRef}
-            style={{
-              minWidth: '300px',
-              minHeight: '100px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          ></div>
-        </Box>
-        
-        <Typography variant="body2" color="textSecondary" gutterBottom>
-          Order Number: {order.order_number}
+        <Typography fontWeight="bold" sx={{ fontSize: '0.9rem', mb: 0.5 }}>
+          {order.order_number}
         </Typography>
-        
-        <Typography variant="body2" color="textSecondary" gutterBottom>
-          Date: {new Date(order.created_at).toLocaleDateString()}
-        </Typography>
-        
-        <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-          <Button
-            variant="contained"
-            startIcon={<Printer />}
-            onClick={handlePrint}
-            sx={{ minWidth: 150 }}
-          >
-            Print Barcode
-          </Button>
-          {onClose && (
-            <Button variant="outlined" onClick={onClose}>
-              Close
-            </Button>
-          )}
+        <Box sx={{ width: '100%' }}>
+          <div ref={barcodeRef} style={{ width: '100%' }} />
         </Box>
       </Paper>
+
+      <Typography variant="caption" color="text.disabled" display="block" textAlign="center" sx={{ mt: 1, mb: 2 }}>
+        ⚙️ Paper size: 50mm × 25mm — Margins: None
+      </Typography>
+
+      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+        <Button variant="contained" startIcon={<Printer size={16} />} onClick={handlePrint}>
+          طباعة الستيكر
+        </Button>
+        {onClose && (
+          <Button variant="outlined" onClick={onClose}>
+            إغلاق
+          </Button>
+        )}
+      </Box>
     </Box>
   );
 }
 
 export default OrderBarcodePrint;
-
-
-
-
-
-

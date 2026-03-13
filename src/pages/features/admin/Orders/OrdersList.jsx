@@ -559,7 +559,8 @@ export default function OrdersList() {
                     <Typography variant="body1">{orderDetails.shipping_address.apartment}</Typography>
                   )}
                   <Typography variant="body1">
-                    {orderDetails.shipping_address.city}, {orderDetails.shipping_address.governorate} {orderDetails.shipping_address.postal_code}
+                    {orderDetails.shipping_address.city}, {orderDetails.shipping_address.governorate}{' '}
+                    {orderDetails.shipping_address.postal_code}
                   </Typography>
                   <Typography variant="body1">{orderDetails.shipping_address.country}</Typography>
                   {orderDetails.shipping_address.phone && (

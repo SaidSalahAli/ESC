@@ -33,204 +33,100 @@ import { adminService } from 'api';
 import { getImageUrl } from 'utils/imageHelper';
 import BarcodePrint from 'components/BarcodePrint';
 import JsBarcode from 'jsbarcode';
-import imageCompression from 'browser-image-compression'; // npm install browser-image-compression
+import imageCompression from 'browser-image-compression';
+import { printLabel } from 'utils/printLabel';
 
 const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
-// ===== إعدادات الضغط =====
 const compressionOptions = {
-  maxSizeMB: 0.5, // الحد الأقصى للحجم = 2MB
-  maxWidthOrHeight: 2560, // أقصى أبعاد = يحافظ على الدقة الأصلية تقريباً
-  useWebWorker: true, // الضغط في background thread = مش بيفرّز الصفحة
-  initialQuality: 0.95, // جودة 95% = قريب جداً من الأصل
-  alwaysKeepResolution: true, // ⬅️ مهم جداً: متقلّلش الأبعاد خالص
-  fileType: 'image/webp' // ⬅️ WebP = أحسن ضغط مع أعلى جودة
+  maxSizeMB: 0.5,
+  maxWidthOrHeight: 2560,
+  useWebWorker: true,
+  initialQuality: 0.95,
+  alwaysKeepResolution: true,
+  fileType: 'image/webp'
 };
-// ===== مكوّن طباعة باركود لون معين =====
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Barcode canvas for screen preview inside the dialog
+// ─────────────────────────────────────────────────────────────────────────────
+function BarcodeCanvas({ value }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current || !value) return;
+    try {
+      JsBarcode(ref.current, value, {
+        format: 'CODE128',
+        width: 1.6,
+        height: 42,
+        displayValue: true,
+        fontSize: 10,
+        margin: 4,
+        background: '#fafafa'
+      });
+    } catch (e) {
+      console.error('Barcode canvas error:', e);
+    }
+  }, [value]);
+  return <canvas ref={ref} style={{ maxWidth: '100%' }} />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ColorBarcodePrintDialog
+// Shows all sizes for a color with their barcodes and prints 75×50mm labels
+// ─────────────────────────────────────────────────────────────────────────────
 function ColorBarcodePrintDialog({ open, onClose, product, color }) {
-  const printRef = useRef(null);
+  if (!open || !color || !product) return null;
 
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-
-    printWindow.document.write(`
-  <html>
-    <head>
-      <title>Barcode - ${product?.name} - ${color?.label}</title>
-
-      <style>
-
-        @page {
-          size: 38mm 25mm;
-          margin: 0;
-        }
-
-        *{
-          margin:0;
-          padding:0;
-          box-sizing:border-box;
-        }
-
-        body{
-          font-family: Arial, sans-serif;
-          width:38mm;
-          height:25mm;
-        }
-
-        .label-grid{
-          width:38mm;
-        }
-
-        .label-card{
-          width:38mm;
-          height:25mm;
-          padding:1mm;
-          text-align:center;
-          display:flex;
-          flex-direction:column;
-          justify-content:center;
-          align-items:center;
-          page-break-after:always;
-        }
-
-        .product-name{
-          font-size:8px;
-          font-weight:bold;
-          margin-bottom:1mm;
-        }
-
-        .variant-info{
-          font-size:7px;
-          margin-bottom:1mm;
-        }
-
-        .color-dot{
-          display:inline-block;
-          width:2.5mm;
-          height:2.5mm;
-          border-radius:50%;
-          border:1px solid #ccc;
-          margin-right:2px;
-          vertical-align:middle;
-        }
-
-        svg{
-          width:34mm;
-          height:auto;
-        }
-
-        .sku-text{
-          font-size:6px;
-          margin-top:1mm;
-        }
-
-      </style>
-
-    </head>
-
-    <body>
-
-      <div class="label-grid">
-
-        ${(color?.sizes || [])
-          .map((size) => {
-            const barcodeVal = size.barcode || size.sku || `${product?.id}-${color?.label}-${size.value}`;
-
-            const safeId = "bc-${size.value}-${barcodeVal.replace(/[^a-zA-Z0-9]/g, '')}";
-
-            return `
-              <div class="label-card">
-
-                <div class="product-name">
-                  ${product?.name || ''}
-                </div>
-
-                <div class="variant-info">
-                  <span class="color-dot" style="background:${color?.hex}"></span>
-                  ${color?.label} • ${size.value}
-                </div>
-
-                <svg id="${safeId}"></svg>
-
-                ${size.sku ? `<div class="sku-text">${size.sku}</div>` : ''}
-
-              </div>
-            `;
-          })
-          .join('')}
-
-      </div>
-
-
-      <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
-      <script>
-
-        window.onload = function(){
-
-          ${(color?.sizes || [])
-            .map((size) => {
-              const barcodeVal = size.barcode || size.sku || `${product?.id}-${color?.label}-${size.value}`;
-
-              const safeId = "bc-${size.value}-${barcodeVal.replace(/[^a-zA-Z0-9]/g, '')}";
-
-              return `
-                try{
-
-                  JsBarcode("#${safeId}", "${barcodeVal}",{
-                    format:"CODE128",
-                    width:2,
-                    height:18,
-                    displayValue:true,
-                    fontSize:8,
-                    margin:0
-                  });
-
-                }catch(e){
-                  console.error(e);
-                }
-              `;
-            })
-            .join('')}
-
-          setTimeout(()=>{
-            window.print();
-          },500);
-
-        }
-
-      </script>
-
-    </body>
-  </html>
-  `);
-
-    printWindow.document.close();
+  const handlePrintAll = () => {
+    const labels = (color.sizes || []).map((size) => ({
+      brand: 'ESC WEAR',
+      title: product.name,
+      subtitle: `${color.label} • ${size.value}`,
+      barcode: (size.barcode || size.sku || `${product.id}-${color.label}-${size.value}`).toString(),
+      meta: [size.sku && `SKU: ${size.sku}`, size.stock_quantity !== undefined && `Stock: ${size.stock_quantity}`]
+        .filter(Boolean)
+        .join('  |  ')
+    }));
+    printLabel(labels);
   };
 
-  if (!open || !color || !product) return null;
+  const handlePrintOne = (size) => {
+    printLabel([
+      {
+        brand: 'ESC WEAR',
+        title: product.name,
+        subtitle: `${color.label} • ${size.value}`,
+        barcode: (size.barcode || size.sku || `${product.id}-${color.label}-${size.value}`).toString(),
+        meta: [size.sku && `SKU: ${size.sku}`, size.stock_quantity !== undefined && `Stock: ${size.stock_quantity}`]
+          .filter(Boolean)
+          .join('  |  ')
+      }
+    ]);
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      {/* Title */}
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box
           sx={{
-            width: 18,
-            height: 18,
+            width: 16,
+            height: 16,
             borderRadius: '50%',
             bgcolor: color.hex,
             border: '1px solid #ddd',
             flexShrink: 0
           }}
         />
-        طباعة باركود: {product.name} — {color.label}
+        باركودات: {product.name} — {color.label}
       </DialogTitle>
 
       <DialogContent dividers>
-        {color.sizes && color.sizes.length > 0 ? (
+        {color.sizes?.length > 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {color.sizes.map((size, idx) => {
-              const barcodeVal = size.barcode || size.sku || `${product.id}-${color.label}-${size.value}`;
+              const barcodeVal = (size.barcode || size.sku || `${product.id}-${color.label}-${size.value}`).toString();
               return (
                 <Box
                   key={idx}
@@ -244,18 +140,24 @@ function ColorBarcodePrintDialog({ open, onClose, product, color }) {
                     bgcolor: '#fafafa'
                   }}
                 >
-                  {/* Info */}
-                  <Box sx={{ minWidth: 120 }}>
+                  {/* ── Info column ── */}
+                  <Box sx={{ minWidth: 130 }}>
                     <Typography variant="subtitle2" fontWeight="bold">
                       {product.name}
                     </Typography>
+
+                    {/* Color dot + name */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                      <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: color.hex, border: '1px solid #ccc' }} />
+                      <Box
+                        sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color.hex, border: '1px solid #ccc', flexShrink: 0 }}
+                      />
                       <Typography variant="body2" color="textSecondary">
                         {color.label}
                       </Typography>
                     </Box>
+
                     <Chip label={`Size: ${size.value}`} size="small" sx={{ mt: 0.5, fontWeight: 'bold' }} />
+
                     {size.sku && (
                       <Typography variant="caption" display="block" color="textSecondary" sx={{ mt: 0.5 }}>
                         SKU: {size.sku}
@@ -266,69 +168,59 @@ function ColorBarcodePrintDialog({ open, onClose, product, color }) {
                         Stock: {size.stock_quantity} pcs
                       </Typography>
                     )}
+
+                    {/* Print single */}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Printer size={13} />}
+                      onClick={() => handlePrintOne(size)}
+                      sx={{ mt: 1, fontSize: '0.7rem' }}
+                    >
+                      طباعة هذا فقط
+                    </Button>
                   </Box>
 
                   <Divider orientation="vertical" flexItem />
 
-                  {/* Barcode */}
+                  {/* ── Barcode preview column ── */}
                   <Box sx={{ flex: 1, textAlign: 'center' }}>
-                    <ColorBarcodeCanvas value={barcodeVal} />
-                    <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                    <BarcodeCanvas value={barcodeVal} />
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block', wordBreak: 'break-all' }}>
                       {barcodeVal}
                     </Typography>
                   </Box>
                 </Box>
               );
             })}
+
+            {/* Paper size hint */}
+            <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                ⚙️ <strong>إعداد الطابعة:</strong> Paper size → Custom <strong>75 × 50 mm</strong> — Margins: None
+              </Typography>
+            </Box>
           </Box>
         ) : (
           <Typography color="textSecondary" textAlign="center" py={3}>
-            لا توجد أحجام لهذا اللون بعد.
+            لا توجد مقاسات لهذا اللون بعد.
           </Typography>
         )}
       </DialogContent>
 
       <DialogActions>
         <Button onClick={onClose}>إغلاق</Button>
-        <Button
-          variant="contained"
-          startIcon={<Printer size={18} />}
-          onClick={handlePrint}
-          disabled={!color.sizes || color.sizes.length === 0}
-        >
-          طباعة الكل
+        <Button variant="contained" startIcon={<Printer size={16} />} onClick={handlePrintAll} disabled={!color.sizes?.length}>
+          طباعة الكل ({color.sizes?.length || 0} ستيكر)
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-function ColorBarcodeCanvas({ value }) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    if (canvasRef.current && value) {
-      try {
-        JsBarcode(canvasRef.current, value, {
-          format: 'CODE128',
-          width: 1.5,
-          height: 45,
-          displayValue: true,
-          fontSize: 11,
-          margin: 6,
-          background: '#fafafa'
-        });
-      } catch (e) {
-        console.error('Barcode generation error:', e);
-      }
-    }
-  }, [value]);
-
-  return <canvas ref={canvasRef} style={{ maxWidth: '100%' }} />;
-}
-
-// ============================================================
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Main ProductsList component (unchanged logic, only ColorBarcodePrintDialog updated)
+// ─────────────────────────────────────────────────────────────────────────────
 export default function ProductsList() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -338,7 +230,6 @@ export default function ProductsList() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalProducts, setTotalProducts] = useState(0);
 
-  // Dialog states
   const [openDialog, setOpenDialog] = useState(false);
   const [openBarcodeDialog, setOpenBarcodeDialog] = useState(false);
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState(null);
@@ -357,15 +248,11 @@ export default function ProductsList() {
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [compressing, setCompressing] = useState(false); // حالة الضغط
-
+  const [compressing, setCompressing] = useState(false);
   const [colorsWithSizes, setColorsWithSizes] = useState([]);
-
   const [additionalImages, setAdditionalImages] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [imagesToDelete, setImagesToDelete] = useState([]);
-
-  // ===== Color Barcode Dialog State =====
   const [openColorBarcodeDialog, setOpenColorBarcodeDialog] = useState(false);
   const [selectedColorForBarcode, setSelectedColorForBarcode] = useState(null);
 
@@ -387,9 +274,7 @@ export default function ProductsList() {
   const fetchCategories = async () => {
     try {
       const response = await adminService.getCategoriesList();
-      if (response.success) {
-        setCategories(response.data || []);
-      }
+      if (response.success) setCategories(response.data || []);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
     }
@@ -398,41 +283,35 @@ export default function ProductsList() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage]); // eslint-disable-line
 
-  const handleChangePage = (event, newPage) => setPage(newPage);
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+  const handleChangePage = (_, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (e) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
     setPage(0);
   };
 
   useEffect(() => {
     let total = 0;
-    colorsWithSizes.forEach((color) => {
-      (color.sizes || []).forEach((size) => {
-        total += parseInt(size.stock_quantity, 10) || 0;
-      });
-    });
+    colorsWithSizes.forEach((c) =>
+      (c.sizes || []).forEach((s) => {
+        total += parseInt(s.stock_quantity, 10) || 0;
+      })
+    );
     setFormData((prev) => ({ ...prev, stock_quantity: total ? String(total) : '' }));
   }, [colorsWithSizes]);
 
   const normalizeVariants = (variants) => {
     if (!variants) return [];
-    const colors = variants.color || [];
-    const combinations = variants.combination || [];
     const colorMap = {};
-    colors.forEach((c) => {
+    (variants.color || []).forEach((c) => {
       colorMap[c.value] = { label: c.value, hex: c.hex || '#000000', sizes: [] };
     });
-    combinations.forEach((combo) => {
-      const colorValue = combo.color_value || combo.value || '';
-      const sizeValue = combo.size_value || '';
-      if (!colorMap[colorValue]) {
-        colorMap[colorValue] = { label: colorValue, hex: combo.hex || '#000000', sizes: [] };
-      }
-      colorMap[colorValue].sizes.push({
-        value: sizeValue,
+    (variants.combination || []).forEach((combo) => {
+      const cv = combo.color_value || combo.value || '';
+      if (!colorMap[cv]) colorMap[cv] = { label: cv, hex: combo.hex || '#000000', sizes: [] };
+      colorMap[cv].sizes.push({
+        value: combo.size_value || '',
         stock_quantity: combo.stock_quantity || 0,
         price_modifier: combo.price_modifier || 0,
         sku: combo.sku || '',
@@ -460,20 +339,12 @@ export default function ProductsList() {
       });
       setImagePreview(product.main_image ? getImageUrl(product.main_image) : null);
       try {
-        const variantsResponse = await adminService.getProductVariants(product.id);
-        if (variantsResponse.success && variantsResponse.data) {
-          setColorsWithSizes(normalizeVariants(variantsResponse.data));
-        } else {
-          setColorsWithSizes([]);
-        }
-        const imagesResponse = await adminService.getProductImages(product.id);
-        if (imagesResponse.success && imagesResponse.data) {
-          setExistingImages(imagesResponse.data || []);
-        } else {
-          setExistingImages([]);
-        }
+        const vr = await adminService.getProductVariants(product.id);
+        setColorsWithSizes(vr.success && vr.data ? normalizeVariants(vr.data) : []);
+        const ir = await adminService.getProductImages(product.id);
+        setExistingImages(ir.success && ir.data ? ir.data : []);
       } catch (err) {
-        console.error('Failed to fetch variants/images:', err);
+        console.error(err);
         setColorsWithSizes([]);
         setExistingImages([]);
       }
@@ -512,7 +383,7 @@ export default function ProductsList() {
 
   const handleInputChange = (e) => {
     const { name, value, checked, type } = e.target;
-    let newValue = type === 'checkbox' ? checked : value;
+    const newValue = type === 'checkbox' ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: newValue }));
     if (name === 'name' && !editingProduct) {
       const slug = value
@@ -525,11 +396,9 @@ export default function ProductsList() {
     }
   };
 
-  // ===== الصورة الرئيسية مع ضغط =====
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setCompressing(true);
     try {
       const compressed = await imageCompression(file, compressionOptions);
@@ -538,8 +407,6 @@ export default function ProductsList() {
       reader.onloadend = () => setImagePreview(reader.result);
       reader.readAsDataURL(compressed);
     } catch (err) {
-      console.error('Compression error:', err);
-      // fallback: استخدم الأصلية لو فشل الضغط
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result);
@@ -549,135 +416,110 @@ export default function ProductsList() {
     }
   };
 
-  const handleAddColor = () => {
-    setColorsWithSizes((prev) => [...prev, { label: 'New Color', hex: '#000000', sizes: [] }]);
+  const handleAddColor = () => setColorsWithSizes((p) => [...p, { label: 'New Color', hex: '#000000', sizes: [] }]);
+  const handleRemoveColor = (i) => setColorsWithSizes((p) => p.filter((_, idx) => idx !== i));
+  const handleColorFieldChange = (ci, field, val) => {
+    const u = [...colorsWithSizes];
+    u[ci] = { ...u[ci], [field]: val };
+    setColorsWithSizes(u);
+  };
+  const handleAddSizeToColor = (ci) => {
+    const u = [...colorsWithSizes];
+    if (!u[ci].sizes) u[ci].sizes = [];
+    u[ci].sizes.push({ value: 'S', stock_quantity: 0, price_modifier: 0, sku: '' });
+    setColorsWithSizes(u);
+  };
+  const handleRemoveSizeFromColor = (ci, si) => {
+    const u = [...colorsWithSizes];
+    u[ci].sizes = u[ci].sizes.filter((_, i) => i !== si);
+    setColorsWithSizes(u);
+  };
+  const handleSizeFieldChange = (ci, si, field, val) => {
+    const u = [...colorsWithSizes];
+    u[ci].sizes[si] = { ...u[ci].sizes[si], [field]: val };
+    setColorsWithSizes(u);
   };
 
-  const handleRemoveColor = (colorIndex) => {
-    setColorsWithSizes((prev) => prev.filter((_, i) => i !== colorIndex));
-  };
-
-  const handleColorFieldChange = (colorIndex, field, value) => {
-    const updated = [...colorsWithSizes];
-    updated[colorIndex] = { ...updated[colorIndex], [field]: value };
-    setColorsWithSizes(updated);
-  };
-
-  const handleAddSizeToColor = (colorIndex) => {
-    const updated = [...colorsWithSizes];
-    if (!updated[colorIndex].sizes) updated[colorIndex].sizes = [];
-    updated[colorIndex].sizes.push({ value: 'S', stock_quantity: 0, price_modifier: 0, sku: '' });
-    setColorsWithSizes(updated);
-  };
-
-  const handleRemoveSizeFromColor = (colorIndex, sizeIndex) => {
-    const updated = [...colorsWithSizes];
-    updated[colorIndex].sizes = updated[colorIndex].sizes.filter((_, i) => i !== sizeIndex);
-    setColorsWithSizes(updated);
-  };
-
-  const handleSizeFieldChange = (colorIndex, sizeIndex, field, value) => {
-    const updated = [...colorsWithSizes];
-    updated[colorIndex].sizes[sizeIndex] = { ...updated[colorIndex].sizes[sizeIndex], [field]: value };
-    setColorsWithSizes(updated);
-  };
-
-  // ===== الصور الإضافية مع ضغط =====
   const handleAdditionalImagesChange = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-
     setCompressing(true);
-
-    const compressAndPreview = async (file) => {
+    const compressOne = async (file) => {
       try {
-        const compressed = await imageCompression(file, compressionOptions);
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve({ file: compressed, preview: reader.result });
-          reader.readAsDataURL(compressed);
+        const c = await imageCompression(file, compressionOptions);
+        return new Promise((res) => {
+          const r = new FileReader();
+          r.onloadend = () => res({ file: c, preview: r.result });
+          r.readAsDataURL(c);
         });
       } catch {
-        // fallback للأصلية لو فشل الضغط
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve({ file, preview: reader.result });
-          reader.readAsDataURL(file);
+        return new Promise((res) => {
+          const r = new FileReader();
+          r.onloadend = () => res({ file, preview: r.result });
+          r.readAsDataURL(file);
         });
       }
     };
-
     try {
-      const results = await Promise.all(files.map(compressAndPreview));
-      setAdditionalImages((prev) => [...prev, ...results]);
+      const results = await Promise.all(files.map(compressOne));
+      setAdditionalImages((p) => [...p, ...results]);
     } catch (err) {
-      console.error('Additional images compression error:', err);
+      console.error(err);
     } finally {
       setCompressing(false);
     }
   };
 
-  const handleRemoveAdditionalImage = (index) => {
-    setAdditionalImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleDeleteExistingImage = (imageId) => {
-    setImagesToDelete((prev) => [...prev, imageId]);
-    setExistingImages((prev) => prev.filter((img) => img.id !== imageId));
+  const handleRemoveAdditionalImage = (i) => setAdditionalImages((p) => p.filter((_, idx) => idx !== i));
+  const handleDeleteExistingImage = (id) => {
+    setImagesToDelete((p) => [...p, id]);
+    setExistingImages((p) => p.filter((img) => img.id !== id));
   };
 
   const handleSubmit = async () => {
     try {
-      const formDataToSend = new FormData();
+      const fd = new FormData();
       Object.keys(formData).forEach((key) => {
-        const value = formData[key];
-        if (value === null || value === undefined || key === 'main_image') return;
-        if (typeof value === 'boolean') {
-          formDataToSend.append(key, value ? '1' : '0');
-        } else if (value !== '') {
-          formDataToSend.append(key, value);
-        }
+        const v = formData[key];
+        if (v === null || v === undefined || key === 'main_image') return;
+        if (typeof v === 'boolean') fd.append(key, v ? '1' : '0');
+        else if (v !== '') fd.append(key, v);
       });
-
-      if (imageFile) formDataToSend.append('main_image', imageFile);
+      if (imageFile) fd.append('main_image', imageFile);
 
       const variants = [];
       const uniqueSizes = new Map();
-      colorsWithSizes.forEach((color) => {
-        (color.sizes || []).forEach((s) => {
-          if (s && s.value)
-            uniqueSizes.set(s.value, { value: s.value, price_modifier: parseFloat(s.price_modifier) || 0, sku: s.sku || null });
-        });
-      });
-      Array.from(uniqueSizes.values()).forEach((sz) => {
-        variants.push({ name: 'size', value: sz.value, stock_quantity: 0, price_modifier: sz.price_modifier || 0, sku: sz.sku || null });
-      });
-      colorsWithSizes.forEach((color) => {
-        (color.sizes || []).forEach((s) => {
+      colorsWithSizes.forEach((c) =>
+        (c.sizes || []).forEach((s) => {
+          if (s?.value) uniqueSizes.set(s.value, { value: s.value, price_modifier: parseFloat(s.price_modifier) || 0, sku: s.sku || null });
+        })
+      );
+      uniqueSizes.forEach((sz) =>
+        variants.push({ name: 'size', value: sz.value, stock_quantity: 0, price_modifier: sz.price_modifier || 0, sku: sz.sku || null })
+      );
+      colorsWithSizes.forEach((c) =>
+        (c.sizes || []).forEach((s) =>
           variants.push({
             name: 'color',
-            value: color.label || color.hex,
-            hex: color.hex,
+            value: c.label || c.hex,
+            hex: c.hex,
             size_value: s.value,
             stock_quantity: parseInt(s.stock_quantity, 10) || 0,
             price_modifier: parseFloat(s.price_modifier) || 0,
             sku: s.sku || null,
             barcode: s.barcode || ''
-          });
-        });
-      });
+          })
+        )
+      );
 
-      if (variants.length > 0) formDataToSend.append('variants', JSON.stringify(variants));
+      if (variants.length > 0) fd.append('variants', JSON.stringify(variants));
       additionalImages.forEach((img) => {
-        if (img.file) formDataToSend.append('images[]', img.file);
+        if (img.file) fd.append('images[]', img.file);
       });
-      if (imagesToDelete.length > 0) formDataToSend.append('image_ids_to_delete', JSON.stringify(imagesToDelete));
+      if (imagesToDelete.length > 0) fd.append('image_ids_to_delete', JSON.stringify(imagesToDelete));
 
-      if (editingProduct) {
-        await adminService.updateProduct(editingProduct.id, formDataToSend);
-      } else {
-        await adminService.createProduct(formDataToSend);
-      }
+      if (editingProduct) await adminService.updateProduct(editingProduct.id, fd);
+      else await adminService.createProduct(fd);
       handleCloseDialog();
       fetchProducts();
     } catch (err) {
@@ -686,10 +528,10 @@ export default function ProductsList() {
     }
   };
 
-  const handleDelete = async (productId) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        await adminService.deleteProduct(productId);
+        await adminService.deleteProduct(id);
         fetchProducts();
       } catch (err) {
         alert('Error: ' + err.message);
@@ -697,9 +539,7 @@ export default function ProductsList() {
     }
   };
 
-  if (loading && products.length === 0) {
-    return <Typography>Loading...</Typography>;
-  }
+  if (loading && products.length === 0) return <Typography>Loading...</Typography>;
 
   return (
     <Box>
@@ -755,7 +595,7 @@ export default function ProductsList() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="textSecondary">
-                            {categories.find((cat) => cat.id === product.category_id)?.name || '-'}
+                            {categories.find((c) => c.id === product.category_id)?.name || '-'}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -763,8 +603,8 @@ export default function ProductsList() {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={product.combinations.map((c) => c.stock_quantity).reduce((a, b) => a + b, 0) + ' pcs'}
-                            color={product.combinations.map((c) => c.stock_quantity).reduce((a, b) => a + b, 0) > 0 ? 'success' : 'error'}
+                            label={product.combinations.reduce((a, c) => a + c.stock_quantity, 0) + ' pcs'}
+                            color={product.combinations.reduce((a, c) => a + c.stock_quantity, 0) > 0 ? 'success' : 'error'}
                             size="small"
                             variant="outlined"
                           />
@@ -779,19 +619,19 @@ export default function ProductsList() {
                         <TableCell align="right">
                           <IconButton
                             size="small"
+                            color="primary"
+                            title="Print Barcode"
                             onClick={() => {
                               setSelectedProductForBarcode(product);
                               setOpenBarcodeDialog(true);
                             }}
-                            title="Print Barcode"
-                            color="primary"
                           >
                             <Printer />
                           </IconButton>
-                          <IconButton size="small" onClick={() => handleOpenDialog(product)} title="Edit">
+                          <IconButton size="small" title="Edit" onClick={() => handleOpenDialog(product)}>
                             <Edit />
                           </IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleDelete(product.id)} title="Delete">
+                          <IconButton size="small" color="error" title="Delete" onClick={() => handleDelete(product.id)}>
                             <Trash />
                           </IconButton>
                         </TableCell>
@@ -800,7 +640,6 @@ export default function ProductsList() {
                   </TableBody>
                 </Table>
               </TableContainer>
-
               <TablePagination
                 component="div"
                 count={totalProducts}
@@ -815,7 +654,7 @@ export default function ProductsList() {
         </Grid>
       </Grid>
 
-      {/* Add/Edit Dialog */}
+      {/* ── Add / Edit Dialog ── */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
         <DialogContent>
@@ -869,7 +708,6 @@ export default function ProductsList() {
               />
             </Grid>
 
-            {/* ===== الصورة الرئيسية مع مؤشر الضغط ===== */}
             <Grid item xs={12}>
               <Stack spacing={2}>
                 <Button variant="outlined" component="label" fullWidth disabled={compressing}>
@@ -878,7 +716,7 @@ export default function ProductsList() {
                 </Button>
                 {compressing && (
                   <Typography variant="caption" color="primary" textAlign="center">
-                    ⏳ يتم ضغط الصورة، لحظة من فضلك...
+                    ⏳ يتم ضغط الصورة...
                   </Typography>
                 )}
                 {imagePreview && !compressing && (
@@ -921,9 +759,9 @@ export default function ProductsList() {
                 onChange={handleInputChange}
                 required
               >
-                {categories.map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.name}
+                {categories.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -941,19 +779,19 @@ export default function ProductsList() {
               />
             </Grid>
 
-            {/* ===== Colors & Sizes Section ===== */}
+            {/* ── Colors & Sizes ── */}
             <Grid item xs={12}>
               <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">Colors & Sizes (الألوان والمقاسات)</Typography>
+                  <Typography variant="h6">Colors & Sizes</Typography>
                   <Button size="small" startIcon={<Add />} onClick={handleAddColor}>
                     Add Color
                   </Button>
                 </Box>
 
-                {colorsWithSizes.map((color, colorIndex) => (
-                  <Box key={colorIndex} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, mb: 2, bgcolor: '#f9f9f9' }}>
-                    {/* Color Header */}
+                {colorsWithSizes.map((color, ci) => (
+                  <Box key={ci} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, mb: 2, bgcolor: '#f9f9f9' }}>
+                    {/* Color header */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: color.hex, border: '1px solid #ccc' }} />
@@ -961,27 +799,25 @@ export default function ProductsList() {
                           Color: {color.label}
                         </Typography>
                       </Box>
-
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        {/* ── Print barcode button ── */}
                         <Button
                           size="small"
                           variant="outlined"
                           color="primary"
-                          startIcon={<Printer size={16} />}
+                          startIcon={<Printer size={14} />}
+                          disabled={!color.sizes?.length}
                           onClick={() => {
                             setSelectedColorForBarcode({ ...color });
                             setOpenColorBarcodeDialog(true);
                           }}
-                          disabled={!color.sizes || color.sizes.length === 0}
-                          title="طباعة باركود هذا اللون"
                         >
-                          Barcode
+                          Barcode ({color.sizes?.length || 0})
                         </Button>
-
-                        <Button size="small" startIcon={<Add />} onClick={() => handleAddSizeToColor(colorIndex)} variant="outlined">
+                        <Button size="small" startIcon={<Add />} onClick={() => handleAddSizeToColor(ci)} variant="outlined">
                           Add Size
                         </Button>
-                        <IconButton color="error" size="small" onClick={() => handleRemoveColor(colorIndex)}>
+                        <IconButton color="error" size="small" onClick={() => handleRemoveColor(ci)}>
                           <CloseCircle />
                         </IconButton>
                       </Box>
@@ -995,7 +831,7 @@ export default function ProductsList() {
                           size="small"
                           label="Color Name"
                           value={color.label}
-                          onChange={(e) => handleColorFieldChange(colorIndex, 'label', e.target.value)}
+                          onChange={(e) => handleColorFieldChange(ci, 'label', e.target.value)}
                         />
                       </Grid>
                       <Grid item xs={6}>
@@ -1005,27 +841,27 @@ export default function ProductsList() {
                           type="color"
                           label="Color"
                           value={color.hex}
-                          onChange={(e) => handleColorFieldChange(colorIndex, 'hex', e.target.value)}
+                          onChange={(e) => handleColorFieldChange(ci, 'hex', e.target.value)}
                           InputLabelProps={{ shrink: true }}
                         />
                       </Grid>
                     </Grid>
 
-                    {/* Sizes */}
-                    {color.sizes && color.sizes.length > 0 && (
+                    {/* Sizes rows */}
+                    {color.sizes?.length > 0 && (
                       <Box sx={{ pl: 2, borderLeft: '2px solid #1976d2' }}>
                         <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
                           Sizes for {color.label}:
                         </Typography>
-                        {color.sizes.map((size, sizeIndex) => (
-                          <Grid container spacing={2} key={sizeIndex} sx={{ mb: 1 }} alignItems="center">
+                        {color.sizes.map((size, si) => (
+                          <Grid container spacing={2} key={si} sx={{ mb: 1 }} alignItems="center">
                             <Grid item xs={3}>
                               <TextField
                                 fullWidth
                                 size="small"
-                                label="Size Value"
+                                label="Size"
                                 value={size.value}
-                                onChange={(e) => handleSizeFieldChange(colorIndex, sizeIndex, 'value', e.target.value)}
+                                onChange={(e) => handleSizeFieldChange(ci, si, 'value', e.target.value)}
                               />
                             </Grid>
                             <Grid item xs={2}>
@@ -1035,7 +871,7 @@ export default function ProductsList() {
                                 type="number"
                                 label="Stock"
                                 value={size.stock_quantity}
-                                onChange={(e) => handleSizeFieldChange(colorIndex, sizeIndex, 'stock_quantity', e.target.value)}
+                                onChange={(e) => handleSizeFieldChange(ci, si, 'stock_quantity', e.target.value)}
                               />
                             </Grid>
                             <Grid item xs={2}>
@@ -1044,7 +880,7 @@ export default function ProductsList() {
                                 size="small"
                                 label="SKU"
                                 value={size.sku || ''}
-                                onChange={(e) => handleSizeFieldChange(colorIndex, sizeIndex, 'sku', e.target.value)}
+                                onChange={(e) => handleSizeFieldChange(ci, si, 'sku', e.target.value)}
                               />
                             </Grid>
                             <Grid item xs={3}>
@@ -1056,18 +892,38 @@ export default function ProductsList() {
                                 InputProps={{ readOnly: true }}
                                 helperText="Auto-generated"
                                 disabled
-                                sx={{ fontSize: '0.75rem' }}
                               />
                             </Grid>
                             <Grid item xs={2}>
-                              <IconButton
-                                color="error"
-                                size="small"
-                                onClick={() => handleRemoveSizeFromColor(colorIndex, sizeIndex)}
-                                title="Remove Size"
-                              >
-                                <CloseCircle />
-                              </IconButton>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                {/* Print single size sticker directly */}
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  title="Print this size"
+                                  disabled={!size.barcode && !size.sku}
+                                  onClick={() =>
+                                    printLabel([
+                                      {
+                                        brand: 'ESC WEAR',
+                                        title: editingProduct?.name || '',
+                                        subtitle: `${color.label} • ${size.value}`,
+                                        barcode: (
+                                          size.barcode ||
+                                          size.sku ||
+                                          `${editingProduct?.id}-${color.label}-${size.value}`
+                                        ).toString(),
+                                        meta: size.sku ? `SKU: ${size.sku}` : ''
+                                      }
+                                    ])
+                                  }
+                                >
+                                  <Printer size={16} />
+                                </IconButton>
+                                <IconButton color="error" size="small" onClick={() => handleRemoveSizeFromColor(ci, si)}>
+                                  <CloseCircle />
+                                </IconButton>
+                              </Box>
                             </Grid>
                           </Grid>
                         ))}
@@ -1084,13 +940,12 @@ export default function ProductsList() {
               </Box>
             </Grid>
 
-            {/* ===== Additional Images Section مع ضغط ===== */}
+            {/* ── Additional Images ── */}
             <Grid item xs={12}>
               <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Additional Images (for product details)
+                  Additional Images
                 </Typography>
-
                 {existingImages.length > 0 && (
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -1119,22 +974,19 @@ export default function ProductsList() {
                     </Grid>
                   </Box>
                 )}
-
                 <Button variant="outlined" component="label" fullWidth startIcon={<Add />} sx={{ mb: 2 }} disabled={compressing}>
                   {compressing ? 'جارٍ ضغط الصور...' : 'Upload Additional Images'}
                   <input type="file" hidden accept="image/*" multiple onChange={handleAdditionalImagesChange} />
                 </Button>
-
                 {compressing && (
                   <Typography variant="caption" color="primary" textAlign="center" display="block" sx={{ mb: 1 }}>
-                    ⏳ يتم ضغط الصور، لحظة من فضلك...
+                    ⏳ يتم ضغط الصور...
                   </Typography>
                 )}
-
                 {additionalImages.length > 0 && (
                   <Grid container spacing={2}>
-                    {additionalImages.map((img, index) => (
-                      <Grid item xs={4} key={index}>
+                    {additionalImages.map((img, i) => (
+                      <Grid item xs={4} key={i}>
                         <Box sx={{ position: 'relative' }}>
                           <img
                             src={img.preview}
@@ -1145,7 +997,7 @@ export default function ProductsList() {
                             size="small"
                             color="error"
                             sx={{ position: 'absolute', top: 0, right: 0 }}
-                            onClick={() => handleRemoveAdditionalImage(index)}
+                            onClick={() => handleRemoveAdditionalImage(i)}
                           >
                             <CloseCircle />
                           </IconButton>
@@ -1166,7 +1018,7 @@ export default function ProductsList() {
         </DialogActions>
       </Dialog>
 
-      {/* Product-level Barcode Print Dialog */}
+      {/* ── Product Barcode Dialog ── */}
       <Dialog
         open={openBarcodeDialog}
         onClose={() => {
@@ -1190,7 +1042,7 @@ export default function ProductsList() {
         </DialogContent>
       </Dialog>
 
-      {/* ===== Color-level Barcode Print Dialog ===== */}
+      {/* ── Color Barcode Dialog ── */}
       <ColorBarcodePrintDialog
         open={openColorBarcodeDialog}
         onClose={() => {

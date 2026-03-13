@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Divider, Grid, Button } from '@mui/material';
+import { Box, Typography, Button, Divider } from '@mui/material';
 import { Printer } from 'iconsax-react';
 import JsBarcode from 'jsbarcode';
 
@@ -7,135 +7,105 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
   const barcodeRef = useRef(null);
 
   const handlePrint = () => {
-    // Small delay to ensure styles are applied
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    setTimeout(() => window.print(), 100);
   };
 
-  // Generate barcode
   useEffect(() => {
-    if (barcodeRef.current && orderDetails?.order_number) {
+    if (barcodeRef.current && orderDetails?.barcode) {
       try {
-        JsBarcode(barcodeRef.current, orderDetails.order_number, {
+        JsBarcode(barcodeRef.current, orderDetails.barcode, {
           format: 'CODE128',
-          width: 2,
-          height: 60,
+          width: 1.5,
+          height: 50,
           displayValue: true,
-          fontSize: 14,
-          margin: 10
+          fontSize: 11,
+          margin: 5
         });
-      } catch (error) {
-        console.error('Error generating barcode:', error);
+      } catch (e) {
+        console.error(e);
       }
     }
-  }, [orderDetails?.order_number]);
+  }, [orderDetails?.barcode]);
 
-  // Add print event listeners
   useEffect(() => {
-    const beforePrint = () => {
+    const before = () => {
       document.body.style.margin = '0';
       document.body.style.padding = '0';
     };
-
-    const afterPrint = () => {
+    const after = () => {
       document.body.style.margin = '';
       document.body.style.padding = '';
     };
-
-    window.addEventListener('beforeprint', beforePrint);
-    window.addEventListener('afterprint', afterPrint);
-
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
     return () => {
-      window.removeEventListener('beforeprint', beforePrint);
-      window.removeEventListener('afterprint', afterPrint);
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint', after);
     };
   }, []);
 
-  if (!orderDetails) {
-    return <Typography>No order details available</Typography>;
-  }
+  if (!orderDetails) return <Typography>No order details available</Typography>;
+
+  const addr = orderDetails.shipping_address;
+  const user = orderDetails.user;
+
+  const addressLine = [addr?.address_line1, addr?.address_line2, addr?.city, addr?.state, addr?.country].filter(Boolean).join('، ');
+
+  const paymentLabel = orderDetails.payment_method === 'cib_bank' ? 'CIB بطاقة بنكية' : 'الدفع عند الاستلام';
+
+  const statusMap = {
+    pending: 'قيد الانتظار',
+    processing: 'جاري المعالجة',
+    shipped: 'تم الشحن',
+    delivered: 'تم التسليم',
+    cancelled: 'ملغي',
+    refunded: 'مسترجع'
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // cell style helper
+  const cell = (extra = {}) => ({
+    border: '1px solid #000',
+    padding: '6px 8px',
+    ...extra
+  });
 
   return (
     <>
-      {/* Print Styles */}
-      <style>
-        {`
-          @media print {
-            /* Hide everything */
-            body * {
-              visibility: hidden !important;
-            }
-            
-            /* Show only invoice area and its children */
-            .invoice-print-container,
-            .invoice-print-container * {
-              visibility: visible !important;
-            }
-            
-            /* Position invoice at top of page */
-            .invoice-print-container {
-              position: absolute !important;
-              left: 0 !important;
-              top: 0 !important;
-              width: 100% !important;
-              margin: 0 !important;
-              padding: 20px !important;
-            }
-            
-            /* Hide print buttons */
-            .no-print {
-              display: none !important;
-            }
-            
-            /* Page settings */
-            @page {
-              size: A4;
-              margin: 15mm;
-            }
-            
-            /* Ensure proper text rendering */
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
-            
-            /* Table styling for print */
-            table {
-              page-break-inside: avoid;
-              border-collapse: collapse !important;
-            }
-            
-            tr {
-              page-break-inside: avoid;
-            }
-            
-            /* Remove box shadows and borders that might not print well */
-            .MuiCard-root,
-            .MuiPaper-root {
-              box-shadow: none !important;
-              border: 1px solid #e0e0e0 !important;
-            }
-            
-            /* Ensure barcode is visible */
-            svg {
-              max-width: 100% !important;
-            }
-          }
-          
-          @media screen {
-            .invoice-print-container {
-              min-height: 297mm; /* A4 height */
-            }
-          }
-        `}
-      </style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
 
-      <Box>
-        {/* Print Button - Hidden in print */}
-        <Box className="no-print" sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="contained" startIcon={<Printer />} onClick={handlePrint} sx={{ mr: 1 }}>
+        .inv-root { font-family: 'Cairo', sans-serif; direction: rtl; }
+
+        @media print {
+          body * { visibility: hidden !important; }
+          .invoice-print-area, .invoice-print-area * { visibility: visible !important; }
+          .invoice-print-area {
+            position: absolute !important;
+            top: 0 !important; left: 0 !important;
+            width: 100% !important;
+            // padding: 10mm !important;
+            margin: 0 !important;
+          }
+          .no-print { display: none !important; }
+          @page { size: A4; margin: 10mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          table { page-break-inside: avoid; border-collapse: collapse !important; }
+        }
+      `}</style>
+
+      <Box className="inv-root">
+        {/* Toolbar */}
+        <Box className="no-print" sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button variant="contained" startIcon={<Printer />} onClick={handlePrint}>
             طباعة الفاتورة
           </Button>
           <Button variant="outlined" onClick={onClose}>
@@ -143,245 +113,214 @@ export default function OrderInvoicePrint({ orderDetails, onClose }) {
           </Button>
         </Box>
 
-        {/* Invoice Content */}
+        {/* ===== INVOICE ===== */}
         <Box
-          className="invoice-print-container"
+          className="invoice-print-area"
           sx={{
-            p: 4,
-            backgroundColor: 'white',
-            border: '1px solid #e0e0e0',
-            borderRadius: 1
+            backgroundColor: '#fff',
+            border: '1px solid #000',
+            fontFamily: "'Poppins', sans-serif"
+            // direction: 'rtl'
           }}
         >
-          {/* Header with Barcode */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
-              فاتورة
-            </Typography>
+          {/* ── ROW 1: Logo | Barcode ── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px solid #000' }}>
+            <tbody>
+              <tr>
+                {/* Logo cell */}
+                <td
+                  style={{
+                    ...cell({ borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: 'none', width: '35%' }),
+                    borderRight: '2px solid #000'
+                  }}
+                >
+                  <Typography sx={{ fontFamily: 'Cairo', fontWeight: 700, fontSize: '1.6rem', letterSpacing: 1 }}>ESC WEAR</Typography>
+                  <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.7rem', color: '#555' }}>فاتورة / Invoice</Typography>
+                </td>
+                {/* Barcode cell */}
+                <td style={{ padding: '6px 12px', textAlign: 'center' }}>
+                  <svg ref={barcodeRef} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-            {/* Barcode */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-              <svg ref={barcodeRef}></svg>
-            </Box>
+          {/* ── ROW 2: العميل | المدينة | التاريخ ── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '1px solid #000' }}>
+            <tbody>
+              <tr>
+                <td style={{ ...cell({ width: '34%', borderTop: 'none', borderRight: 'none' }), borderLeft: '1px solid #000' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>العميل:</span>
+                  <br />
+                  الاسم : <span style={{ fontSize: '0.85rem' }}>{user ? `${user.first_name} ${user.last_name}` : '—'}</span>
+                  {user?.phone && (
+                    <>
+                      <br />
+                     رقم الهاتف :  <span style={{ fontSize: '0.78rem', color: '#444' }}>{user.phone}</span>
+                    </>
+                  )}
+                  {user?.email && (
+                    <>
+                      <br />
+                     البريد الإلكتروني :  <span style={{ fontSize: '0.72rem', color: '#666' }}>{user.email}</span>
+                    </>
+                  )}
+                </td>
+                <td style={{ ...cell({ width: '33%', borderTop: 'none' }), borderLeft: '1px solid #000' }}>
+                  <br />
+                  <span style={{ fontSize: '0.85rem', display: 'flex', gap: 6 }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>المدينة / المنطقة:</span>
+                    <div>
+                      <span style={{ fontSize: '0.85rem' }}>{addr?.city || '—'}</span>
+                      {addr?.state && <span style={{ fontSize: '0.85rem' }}> / {addr.state}</span>}
+                    </div>
+                  </span>
+                </td>
+                <td style={{ ...cell({ width: '33%', borderTop: 'none', borderLeft: 'none', borderRight: 'none' }) }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>التاريخ:</span>
+                  <br />
+                  <span style={{ fontSize: '0.85rem' }}>{formatDate(orderDetails.created_at)}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-            <Typography variant="h6" color="textSecondary">
-              رقم الطلب: {orderDetails.order_number}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              التاريخ:{' '}
-              {new Date(orderDetails.created_at).toLocaleDateString('ar-EG', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </Typography>
+          {/* ── ROW 3: العنوان | التسليم ── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '1px solid #000' }}>
+            <tbody>
+              <tr>
+                <td style={{ ...cell({ width: '50%', borderTop: 'none', borderRight: 'none' }), borderLeft: '1px solid #000' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>العنوان:</span>
+                  <br />
+                  <span style={{ fontSize: '0.82rem' }}>{addressLine || '—'}</span>
+                  {addr?.postal_code && <span style={{ fontSize: '0.75rem', color: '#666' }}> - {addr.postal_code}</span>}
+                </td>
+                <td style={{ ...cell({ width: '50%', borderTop: 'none', borderLeft: 'none', borderRight: 'none' }) }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>حالة التسليم:</span>
+                  <br />
+                  <span style={{ fontSize: '0.85rem' }}>{statusMap[orderDetails.status] || orderDetails.status}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* ── ROW 4: order note | تاريخ الإشعار | طريقة الدفع ── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px solid #000' }}>
+            <tbody>
+              <tr>
+                <td style={{ ...cell({ width: '40%', borderTop: 'none', borderRight: 'none' }), borderLeft: '1px solid #000' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>Order Note:</span>
+                  <br />
+                  <span style={{ fontSize: '0.82rem', color: '#444' }}>{orderDetails.notes || '—'}</span>
+                </td>
+                <td style={{ ...cell({ width: '30%', borderTop: 'none' }), borderLeft: '1px solid #000' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>تاريخ الإشعار:</span>
+                  <br />
+                  <span style={{ fontSize: '0.82rem' }}>{formatDate(orderDetails.updated_at)}</span>
+                </td>
+                <td style={{ ...cell({ width: '30%', borderTop: 'none', borderLeft: 'none', borderRight: 'none' }) }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>طريقة الدفع:</span>
+                  <br />
+                  <span style={{ fontSize: '0.82rem' }}>{paymentLabel}</span>
+                  <br />
+                  <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>رقم الطلب:</span>
+                  <span style={{ fontSize: '0.75rem', marginRight: 4 }}>{orderDetails.order_number}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* ── SECTION TITLE ── */}
+          <Box sx={{ px: 1, py: '4px', backgroundColor: '#f5f5f5', borderBottom: '1px solid #000' }}>
+            <Typography sx={{ fontFamily: 'Cairo', fontWeight: 700, fontSize: '0.85rem' }}>تفاصيل الفاتورة:</Typography>
           </Box>
 
-          <Divider sx={{ my: 3 }} />
+          {/* ── ITEMS TABLE ── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', borderBottom: '2px solid #000' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#ececec' }}>
+                <th style={{ ...cell({ borderTop: 'none', borderRight: 'none', textAlign: 'right', fontSize: '0.8rem' }) }}>
+                  Item / المنتج
+                </th>
+                <th style={{ ...cell({ borderTop: 'none', width: '12%', textAlign: 'center', fontSize: '0.8rem' }) }}>الكمية</th>
+                <th style={{ ...cell({ borderTop: 'none', width: '18%', textAlign: 'center', fontSize: '0.8rem' }) }}>السعر</th>
+                <th style={{ ...cell({ borderTop: 'none', borderLeft: 'none', width: '18%', textAlign: 'center', fontSize: '0.8rem' }) }}>
+                  مرتجع / الإجمالي
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {(orderDetails.items || []).map((item, idx) => (
+                <tr key={item.id || idx}>
+                  <td style={{ ...cell({ borderRight: 'none', fontSize: '0.82rem' }) }}>
+                    {item.product_name || `Product #${item.product_id}`}
+                    {item.variant_name && <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>{item.variant_name}</span>}
+                    {item.sku && <span style={{ display: 'block', fontSize: '0.68rem', color: '#888' }}>SKU: {item.sku}</span>}
+                  </td>
+                  <td style={{ ...cell({ textAlign: 'center', fontSize: '0.82rem' }) }}>{item.quantity}</td>
+                  <td style={{ ...cell({ textAlign: 'center', fontSize: '0.82rem' }) }}>{parseFloat(item.price).toFixed(2)} ج</td>
+                  <td style={{ ...cell({ borderLeft: 'none', textAlign: 'center', fontSize: '0.82rem' }) }}>
+                    {(parseFloat(item.price) * item.quantity).toFixed(2)} ج
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-          {/* Customer & Shipping Information */}
-          <Grid container spacing={4} sx={{ mb: 4 }}>
-            {/* Customer Info */}
-            {orderDetails.user && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                  معلومات العميل
-                </Typography>
-                <Typography variant="body1">
-                  <strong>الاسم:</strong> {orderDetails.user.first_name} {orderDetails.user.last_name}
-                </Typography>
-                <Typography variant="body1">
-                  <strong>البريد الإلكتروني:</strong> {orderDetails.user.email}
-                </Typography>
-                {orderDetails.user.phone && (
-                  <Typography variant="body1">
-                    <strong>الهاتف:</strong> {orderDetails.user.phone}
-                  </Typography>
-                )}
-              </Grid>
-            )}
-
-            {/* Shipping Address */}
-            {orderDetails.shipping_address && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                  عنوان الشحن
-                </Typography>
-                <Typography variant="body1">
-                  {orderDetails.shipping_address.first_name} {orderDetails.shipping_address.last_name}
-                </Typography>
-                <Typography variant="body1">{orderDetails.shipping_address.street_address}</Typography>
-                {orderDetails.shipping_address.apartment && (
-                  <Typography variant="body1">{orderDetails.shipping_address.apartment}</Typography>
-                )}
-                <Typography variant="body1">
-                  {orderDetails.shipping_address.city}, {orderDetails.shipping_address.governorate} {orderDetails.shipping_address.postal_code}
-                </Typography>
-                <Typography variant="body1">{orderDetails.shipping_address.country}</Typography>
-                {orderDetails.shipping_address.phone && (
-                  <Typography variant="body1">
-                    <strong>الهاتف:</strong> {orderDetails.shipping_address.phone}
-                  </Typography>
-                )}
-              </Grid>
-            )}
-          </Grid>
-
-          {/* Order Status & Payment Info */}
-          <Grid container spacing={4} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="body1">
-                <strong>حالة الطلب:</strong> {orderDetails.status}
-              </Typography>
-              <Typography variant="body1">
-                <strong>حالة الدفع:</strong> {orderDetails.payment_status}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Typography variant="body1">
-                <strong>طريقة الدفع:</strong> {orderDetails.payment_method === 'cib_bank' ? 'بطاقة بنكية (CIB)' : 'الدفع عند الاستلام'}
-              </Typography>
-              {orderDetails.tracking_number && (
-                <Typography variant="body1">
-                  <strong>رقم التتبع:</strong> {orderDetails.tracking_number}
-                </Typography>
-              )}
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Order Items Table */}
-          {orderDetails.items && orderDetails.items.length > 0 && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                تفاصيل الطلب
-              </Typography>
-              <TableContainer>
-                <Table sx={{ border: '1px solid #e0e0e0' }}>
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell sx={{ fontWeight: 'bold', border: '1px solid #e0e0e0' }}>المنتج</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold', border: '1px solid #e0e0e0' }}>
-                        الكمية
-                      </TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold', border: '1px solid #e0e0e0' }}>
-                        السعر
-                      </TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold', border: '1px solid #e0e0e0' }}>
-                        الإجمالي
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {orderDetails.items.map((item, index) => (
-                      <TableRow key={item.id || index}>
-                        <TableCell sx={{ border: '1px solid #e0e0e0' }}>
-                          <Typography variant="body1">{item.product_name || `Product ID: ${item.product_id}`}</Typography>
-                          {item.variant_name && (
-                            <Typography variant="caption" color="textSecondary" display="block">
-                              {item.variant_name}
-                            </Typography>
-                          )}
-                          {item.category_name && (
-                            <Typography variant="caption" color="textSecondary" display="block">
-                              التصنيف: {item.category_name}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="center" sx={{ border: '1px solid #e0e0e0' }}>
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell align="center" sx={{ border: '1px solid #e0e0e0' }}>
-                          {item.price} جنيه
-                        </TableCell>
-                        <TableCell align="center" sx={{ border: '1px solid #e0e0e0' }}>
-                          {(item.price * item.quantity).toFixed(2)} جنيه
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Order Totals */}
-          <Box sx={{ maxWidth: 400, ml: 'auto' }}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Typography variant="body1">المجموع الفرعي:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body1" align="right">
-                  {orderDetails.subtotal} جنيه
-                </Typography>
-              </Grid>
-
-              {orderDetails.shipping_cost > 0 && (
-                <>
-                  <Grid item xs={6}>
-                    <Typography variant="body1">تكلفة الشحن:</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="body1" align="right">
-                      {orderDetails.shipping_cost} جنيه
+          {/* ── TOTALS SECTION ── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              {/* Row: subtotal label empty | subtotal value */}
+              <tr>
+                <td style={{ ...cell({ borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: 'none', width: '55%' }) }}>
+                  {/* Left side: tracking / payment status */}
+                  <Box sx={{ p: '4px 8px' }}>
+                    {orderDetails.tracking_number && (
+                      <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.78rem' }}>
+                        <strong>رقم التتبع:</strong> {orderDetails.tracking_number}
+                      </Typography>
+                    )}
+                    <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.78rem' }}>
+                      <strong>حالة الدفع:</strong> {statusMap[orderDetails.payment_status] || orderDetails.payment_status}
                     </Typography>
-                  </Grid>
-                </>
-              )}
-
-              {orderDetails.discount > 0 && (
-                <>
-                  <Grid item xs={6}>
-                    <Typography variant="body1" color="error">
-                      الخصم:
+                    <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.78rem' }}>
+                      <strong>العملة:</strong> {orderDetails.currency || 'EGP'}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="body1" align="right" color="error">
-                      -{orderDetails.discount} جنيه
-                    </Typography>
-                  </Grid>
-                </>
+                  </Box>
+                </td>
+                <td style={{ ...cell({ borderTop: 'none', fontSize: '0.82rem', width: '25%' }) }}>الإجمالي الفرعي</td>
+              </tr>
+              <tr>
+                <td style={{ ...cell({ fontSize: '0.82rem' }) }}>مصاريف الشحن</td>
+                <td style={{ ...cell({ borderLeft: 'none', textAlign: 'center', fontSize: '0.82rem' }) }}>
+                  {parseFloat(orderDetails.shipping_cost || 0).toFixed(2)} ج
+                </td>
+              </tr>
+              {parseFloat(orderDetails.discount || 0) > 0 && (
+                <tr>
+                  <td style={{ ...cell({ fontSize: '0.82rem', color: '#c00' }) }}>الخصم</td>
+                  <td style={{ ...cell({ borderLeft: 'none', textAlign: 'center', fontSize: '0.82rem', color: '#c00' }) }}>
+                    -{parseFloat(orderDetails.discount).toFixed(2)} ج
+                  </td>
+                </tr>
               )}
+              <tr>
+                <td style={{ ...cell({ fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#ececec' }) }}>المبالغ المدفوعة</td>
+                <td
+                  style={{
+                    ...cell({ borderLeft: 'none', textAlign: 'center', fontWeight: 700, fontSize: '0.9rem', backgroundColor: '#ececec' })
+                  }}
+                >
+                  {parseFloat(orderDetails.total || 0).toFixed(2)} ج
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-              <Grid item xs={12}>
-                <Divider sx={{ my: 1 }} />
-              </Grid>
-
-              <Grid item xs={6}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  الإجمالي:
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h6" align="right" sx={{ fontWeight: 'bold' }}>
-                  {orderDetails.total} جنيه
-                </Typography>
-              </Grid>
-            </Grid>
-          </Box>
-
-          {/* Order Notes */}
-          {orderDetails.notes && (
-            <Box sx={{ mt: 4, p: 2, backgroundColor: '#f9f9f9', borderRadius: 1, border: '1px solid #e0e0e0' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                ملاحظات الطلب:
-              </Typography>
-              <Typography variant="body2">{orderDetails.notes}</Typography>
-            </Box>
-          )}
-
-          {/* Footer */}
-          <Box sx={{ mt: 6, pt: 3, borderTop: '1px solid #e0e0e0', textAlign: 'center' }}>
-            <Typography variant="body2" color="textSecondary">
-              شكراً لتسوقك معنا!
-            </Typography>
-            <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 1 }}>
-              للاستفسارات، يرجى التواصل معنا
+          {/* ── Footer ── */}
+          <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid #ccc', textAlign: 'center', pb: 1 }}>
+            <Typography sx={{ fontFamily: 'Cairo', fontSize: '0.75rem', color: '#555' }}>
+              شكراً لتسوقك مع ESC WEAR — للاستفسارات يرجى التواصل معنا
             </Typography>
           </Box>
         </Box>
