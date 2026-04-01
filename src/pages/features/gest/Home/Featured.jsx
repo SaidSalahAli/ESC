@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Box, Container, Typography, CircularProgress } from '@mui/material';
 import { FormattedMessage, useIntl } from 'react-intl';
 import ProductCard from 'components/ProductCard';
-import { productsService } from 'api';
+import { cachedProductsService } from 'api';
 import { cartService } from 'api/cart';
 import useAuth from 'hooks/useAuth';
 import { addToGuestCart } from 'utils/guestCart';
 import { openSnackbar } from 'api/snackbar';
 import { getImageUrl } from 'utils/imageHelper';
+import { ProductGridSkeleton } from 'components/ProductSkeletonLoaders';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Navigation, Autoplay } from 'swiper/modules';
 
@@ -32,7 +33,7 @@ export default function Featured() {
   const [error, setError] = useState(null);
 
   /* ===============================
-      Fetch Data
+      Fetch Data - Now with Phase 2 Caching
   =============================== */
 
   useEffect(() => {
@@ -44,7 +45,11 @@ export default function Featured() {
       setLoading(true);
       setError(null);
 
-      const [productsRes, categoriesRes] = await Promise.all([productsService.getFeatured(12), productsService.getCategories()]);
+      // Use cachedProductsService for smart stale-while-revalidate caching
+      const [productsRes, categoriesRes] = await Promise.all([
+        cachedProductsService.getFeatured(12),
+        cachedProductsService.getCategories()
+      ]);
 
       if (!productsRes.success) throw new Error('Failed to load products');
 
@@ -73,7 +78,7 @@ export default function Featured() {
       setCategories(categoriesRes.success ? categoriesRes.data || [] : []);
       setProducts(transformed);
     } catch (err) {
-      console.error(err);
+      console.error('[Featured] Error loading products:', err);
       setError(err.message);
       setProducts([]);
     } finally {
@@ -140,13 +145,10 @@ export default function Featured() {
           <FormattedMessage id="featured-collections" />
         </Typography>
 
-        {/* Loading */}
+        {/* Loading State - Skeleton Loaders for Better UX */}
         {loading && (
-          <Box textAlign="center" py={6}>
-            <CircularProgress />
-            <Typography mt={2}>
-              <FormattedMessage id="loading-products" />
-            </Typography>
+          <Box>
+            <ProductGridSkeleton count={4} />
           </Box>
         )}
 

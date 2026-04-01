@@ -159,6 +159,8 @@ function ProductCard({ item, addToCart, onQuickView }) {
               component="img"
               src={img}
               alt={item.name}
+              loading={index === 0 ? 'eager' : 'lazy'}
+              decoding="async"
               onError={(e) => {
                 e.currentTarget.src = item.image || 'https://via.placeholder.com/300x300?text=Product';
               }}

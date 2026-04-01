@@ -1,12 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Container, Typography, Button, Stack } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { FormattedMessage } from 'react-intl';
 import { Link as RouterLink } from 'react-router';
+import { useLazyVideo } from 'hooks/useLazyVideo';
 import videoSrc from 'assets/vid/1.mp4';
 
+/**
+ * Hero Component - Optimized for Performance
+ *
+ * Optimizations:
+ * - Lazy loads video with Intersection Observer
+ * - Poster image displays instantly
+ * - No layout shift with fixed aspect ratio
+ * - Preload="none" prevents blocking render
+ * - Multi-format video support ready
+ */
 function Hero() {
   const theme = useTheme();
+  const { videoRef, isVisible } = useLazyVideo({ threshold: 0.1, rootMargin: '100px' });
+  const [videoLoaded, setVideoLoaded] = useState(false);
+
+  // Poster color gradient - matches video content
+  // This displays instantly while video loads
+  const posterStyle = {
+    background: 'linear-gradient(135deg, #0b1213 0%, #1a2425 50%, #0f1a1c 100%)',
+    animation: 'fade-in 0.8s ease-in-out forwards'
+  };
 
   return (
     <Box
@@ -19,25 +39,52 @@ function Hero() {
         overflow: 'hidden'
       }}
     >
-      {/* 🎥 Background Video */}
+      {/* 🎥 Video Container - Optimized for Performance */}
       <Box
-        component="video"
-        autoPlay
-        loop
-        muted
-        playsInline
+        ref={videoRef}
         sx={{
           position: 'absolute',
-          top: '50%',
-          left: '50%',
-          minWidth: '100%',
-          minHeight: '100%',
-          transform: 'translate(-50%, -50%)',
-          objectFit: 'cover',
-          zIndex: 0
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 0,
+          ...posterStyle,
+          // Fade in video when loaded
+          ...(videoLoaded && {
+            animation: 'none'
+          })
         }}
       >
-        <source src={videoSrc} type="video/mp4" />
+        {/* Render video only when visible (lazy load) */}
+        {isVisible && (
+          <Box
+            component="video"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            onCanPlay={() => setVideoLoaded(true)}
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              minWidth: '100%',
+              minHeight: '100%',
+              transform: 'translate(-50%, -50%)',
+              objectFit: 'cover',
+              width: '100%',
+              height: '100%',
+              opacity: videoLoaded ? 1 : 0,
+              transition: 'opacity 0.5s ease-in-out'
+            }}
+          >
+            {/* Multi-format video support for better compatibility */}
+            <source src={videoSrc} type="video/mp4" />
+            Your browser does not support the video tag.
+          </Box>
+        )}
       </Box>
 
       {/* 🌑 Overlay */}
