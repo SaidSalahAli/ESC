@@ -48,8 +48,8 @@ axiosServices.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+    // Handle 401 Unauthorized (but not for refresh endpoint itself)
+    if (error.response?.status === 401 && !originalRequest.url.includes('/api/auth/refresh')) {
       // If this is a retry, don't retry again to avoid infinite loop
       if (originalRequest._retry) {
         localStorage.removeItem('serviceToken');
@@ -97,7 +97,15 @@ axiosServices.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden
+    // Handle 401 on refresh endpoint itself - just redirect to login
+    if (error.response?.status === 401 && originalRequest.url.includes('/api/auth/refresh')) {
+      localStorage.removeItem('serviceToken');
+      localStorage.removeItem('refreshToken');
+      if (!window.location.href.includes('/login')) {
+        window.location.pathname = '/login';
+      }
+      return Promise.reject(error);
+    }
     if (error.response?.status === 403) {
       console.error('Access forbidden:', error.response.data?.message);
     }
