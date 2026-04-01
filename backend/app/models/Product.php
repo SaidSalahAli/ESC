@@ -289,12 +289,36 @@ class Product extends Model
     }
 
     /**
-     * Get featured products
+     * Get featured products with full details (images, variants, reviews)
      */
     public function getFeatured($limit = 8)
     {
         $sql = "SELECT * FROM {$this->table} WHERE is_featured = 1 AND is_active = 1 ORDER BY created_at DESC LIMIT ?";
-        return $this->db->fetchAll($sql, [$limit]);
+        $products = $this->db->fetchAll($sql, [$limit]);
+
+        // Add full details for each product
+        return $this->enrichProductsWithDetails($products);
+    }
+
+    /**
+     * Enrich products array with images and variants
+     */
+    private function enrichProductsWithDetails($products)
+    {
+        if (empty($products)) {
+            return [];
+        }
+
+        $enriched = [];
+        foreach ($products as $product) {
+            $product['images'] = $this->getImages($product['id']);
+            $product['variants'] = $this->getVariants($product['id']);
+            $product['reviews'] = $this->getReviewsStats($product['id']);
+            $product['category'] = $this->getCategory($product['category_id']);
+            $enriched[] = $product;
+        }
+
+        return $enriched;
     }
 
     /**
@@ -305,41 +329,20 @@ class Product extends Model
         // Use direct query (don't rely on views)
         $sql = "
             SELECT 
-                p.id,
-                p.name,
-                p.slug,
-                p.main_image,
-                p.price,
-                p.sales_count,
-                COUNT(DISTINCT o.id) as total_orders,
-                COALESCE(SUM(oi.quantity), 0) as total_quantity_sold,
-                COALESCE(SUM(oi.subtotal), 0) as total_revenue
+                p.*
             FROM {$this->table} p
             LEFT JOIN order_items oi ON p.id = oi.product_id
             LEFT JOIN orders o ON oi.order_id = o.id 
                 AND (o.payment_status = 'paid' OR (o.payment_method = 'cash_on_delivery' AND o.payment_status = 'pending'))
             WHERE p.is_active = 1
             GROUP BY p.id
-            ORDER BY p.sales_count DESC, total_revenue DESC
+            ORDER BY p.sales_count DESC, COALESCE(SUM(oi.subtotal), 0) DESC
             LIMIT ?
         ";
-        return $this->db->fetchAll($sql, [$limit]);
+        $products = $this->db->fetchAll($sql, [$limit]);
 
-        // Fallback: Direct query
-        $sql = "
-            SELECT 
-                p.*,
-                COALESCE(SUM(oi.quantity), 0) as total_sold
-            FROM products p
-            LEFT JOIN order_items oi ON p.id = oi.product_id
-            LEFT JOIN orders o ON oi.order_id = o.id
-            WHERE o.status NOT IN ('cancelled', 'refunded')
-                AND (o.payment_status = 'paid' OR (o.payment_method = 'cash_on_delivery' AND o.payment_status = 'pending'))
-            GROUP BY p.id
-            ORDER BY total_sold DESC
-            LIMIT ?
-        ";
-        return $this->db->fetchAll($sql, [$limit]);
+        // Add full details for each product
+        return $this->enrichProductsWithDetails($products);
     }
 
     /**
@@ -389,7 +392,10 @@ class Product extends Model
         $params[] = $limit;
         $params[] = $offset;
 
-        return $this->db->fetchAll($sql, $params);
+        $products = $this->db->fetchAll($sql, $params);
+
+        // Add full details for each product
+        return $this->enrichProductsWithDetails($products);
     }
 
     /**
@@ -439,7 +445,10 @@ class Product extends Model
     public function getByCategory($categoryId, $limit = 20, $offset = 0)
     {
         $sql = "SELECT * FROM {$this->table} WHERE category_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?";
-        return $this->db->fetchAll($sql, [$categoryId, $limit, $offset]);
+        $products = $this->db->fetchAll($sql, [$categoryId, $limit, $offset]);
+
+        // Add full details for each product
+        return $this->enrichProductsWithDetails($products);
     }
 
     /**
@@ -448,7 +457,10 @@ class Product extends Model
     public function getRelated($productId, $categoryId, $limit = 4)
     {
         $sql = "SELECT * FROM {$this->table} WHERE category_id = ? AND id != ? AND is_active = 1 ORDER BY RAND() LIMIT ?";
-        return $this->db->fetchAll($sql, [$categoryId, $productId, $limit]);
+        $products = $this->db->fetchAll($sql, [$categoryId, $productId, $limit]);
+
+        // Add full details for each product
+        return $this->enrichProductsWithDetails($products);
     }
 
     /**

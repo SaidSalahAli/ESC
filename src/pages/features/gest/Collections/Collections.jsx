@@ -88,11 +88,18 @@ export default function Collections() {
         name: product.name,
         name_ar: product.name_ar,
         price: Number(product.price) || 0,
+        sale_price: product.sale_price || null,
         image,
         category: categoryName,
         category_id: product.category_id,
         description: product.description || product.description_ar || '',
-        slug: product.slug
+        slug: product.slug,
+        main_image: product.main_image,
+        stock_quantity: product.stock_quantity,
+        // Include full product data for ProductCard
+        images: product.images || [],
+        variants: product.variants || { size: [], color: [], combination: [] },
+        reviews: product.reviews || { average_rating: 0, total_reviews: 0 }
       };
     });
   };

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productsService } from 'api';
 import { cartService } from 'api/cart';
 import useAuth from 'hooks/useAuth';
 import { addToGuestCart } from 'utils/guestCart';
@@ -14,53 +13,32 @@ function ProductCard({ item, addToCart, onQuickView }) {
   const { isLoggedIn } = useAuth();
   const intl = useIntl();
 
-  const [productDetails, setProductDetails] = useState(null);
   const [images, setImages] = useState([]);
   const [hoveredImageIndex, setHoveredImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Fetch product details with variants and images
+  // Process images from item data (no need for additional API call)
   useEffect(() => {
-    const fetchProductDetails = async () => {
-      if (!item?.id) return;
+    if (!item?.id) return;
 
-      try {
-        setLoadingDetails(true);
-        const response = await productsService.getById(item.id);
-
-        if (response.success && response.data) {
-          const product = response.data;
-          setProductDetails(product);
-
-          const productImages = [];
-          if (product.main_image) {
-            productImages.push(getImageUrl(product.main_image));
-          }
-          if (product.images && Array.isArray(product.images)) {
-            product.images.forEach((img) => {
-              if (img.image_url) {
-                productImages.push(getImageUrl(img.image_url));
-              }
-            });
-          }
-          if (productImages.length === 1) {
-            productImages.push(productImages[0]);
-          }
-          setImages(productImages.length > 0 ? productImages : [item.image, item.image]);
+    const productImages = [];
+    if (item.main_image) {
+      productImages.push(getImageUrl(item.main_image));
+    }
+    if (item.images && Array.isArray(item.images)) {
+      item.images.forEach((img) => {
+        if (img.image_url) {
+          productImages.push(getImageUrl(img.image_url));
         }
-      } catch (err) {
-        console.error('Error fetching product details:', err);
-        setImages([item.image, item.image]);
-      } finally {
-        setLoadingDetails(false);
-      }
-    };
-
-    fetchProductDetails();
-  }, [item?.id]);
+      });
+    }
+    if (productImages.length === 1) {
+      productImages.push(productImages[0]);
+    }
+    setImages(productImages.length > 0 ? productImages : [item.image, item.image]);
+  }, [item?.id, item?.main_image, item?.images, item?.image]);
 
   const handleCardClick = (e) => {
     if (e.target.closest('.size-btn') || e.target.closest('.card-btn')) return;
@@ -73,9 +51,9 @@ function ProductCard({ item, addToCart, onQuickView }) {
 
     try {
       let variantName = 'Size';
-      if (productDetails && productDetails.variants) {
-        const hasSize = productDetails.variants.size && productDetails.variants.size.length > 0;
-        const hasColor = productDetails.variants.color && productDetails.variants.color.length > 0;
+      if (item && item.variants) {
+        const hasSize = item.variants.size && item.variants.size.length > 0;
+        const hasColor = item.variants.color && item.variants.color.length > 0;
         if (hasColor && !hasSize) variantName = 'Color';
         else if (hasSize && hasColor) variantName = 'Color / Size';
       }
@@ -122,18 +100,13 @@ function ProductCard({ item, addToCart, onQuickView }) {
 
   const getCardStock = () => {
     try {
-      if (
-        productDetails &&
-        productDetails.variants &&
-        Array.isArray(productDetails.variants.combination) &&
-        productDetails.variants.combination.length > 0
-      ) {
-        const anyInStock = productDetails.variants.combination.some((c) => (Number(c.stock_quantity) || 0) > 0);
+      if (item && item.variants && Array.isArray(item.variants.combination) && item.variants.combination.length > 0) {
+        const anyInStock = item.variants.combination.some((c) => (Number(c.stock_quantity) || 0) > 0);
         return anyInStock ? 1 : 0;
       }
-      return Number(productDetails?.stock_quantity ?? item.stock_quantity ?? 0);
+      return Number(item?.stock_quantity ?? 0);
     } catch (err) {
-      return Number(item.stock_quantity ?? 0);
+      return Number(item?.stock_quantity ?? 0);
     }
   };
 
@@ -203,8 +176,8 @@ function ProductCard({ item, addToCart, onQuickView }) {
             />
           ))}
 
-          {/* Stock - only show after details are loaded to avoid false "Out of stock" on slow connections */}
-          {!loadingDetails && cardStock === 0 && (
+          {/* Stock */}
+          {cardStock === 0 && (
             <Typography
               sx={{
                 position: 'absolute',

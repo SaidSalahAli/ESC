@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Container, Typography, CircularProgress } from '@mui/material';
 import { FormattedMessage, useIntl } from 'react-intl';
 import ProductCard from 'components/ProductCard';
@@ -32,18 +32,6 @@ export default function Featured() {
   const [error, setError] = useState(null);
 
   /* ===============================
-      Category Map
-  =============================== */
-
-  const categoryMap = useMemo(() => {
-    const map = {};
-    categories.forEach((cat) => {
-      map[cat.id] = cat.name;
-    });
-    return map;
-  }, [categories]);
-
-  /* ===============================
       Fetch Data
   =============================== */
 
@@ -56,30 +44,30 @@ export default function Featured() {
       setLoading(true);
       setError(null);
 
-      const [productsRes, reviewsRes, categoriesRes] = await Promise.all([
-        productsService.getFeatured(12),
-        productsService.getRecentReviews(100),
-        productsService.getCategories()
-      ]);
+      const [productsRes, categoriesRes] = await Promise.all([productsService.getFeatured(12), productsService.getCategories()]);
 
       if (!productsRes.success) throw new Error('Failed to load products');
 
       const productsArray =
         productsRes.data?.products || productsRes.data?.data || (Array.isArray(productsRes.data) ? productsRes.data : []);
 
-      const reviewsMap = buildReviewsMap(reviewsRes);
-
       const transformed = productsArray.map((product, index) => ({
         id: String(product.id),
         name: product.name,
         name_ar: product.name_ar,
-        category: categoryMap[product.category_id] || product.category || 'Other',
+        category: product.category?.name || 'Other',
         price: Number(product.price) || 0,
+        sale_price: product.sale_price || null,
         image: product.main_image ? getImageUrl(product.main_image) : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
+        main_image: product.main_image,
         description: product.description || product.short_description || product.description_ar || '',
         slug: product.slug,
         is_featured: product.is_featured,
-        reviews: getReviewStats(product.id, reviewsMap)
+        reviews: product.reviews || { average_rating: 0, total_reviews: 0 },
+        // Keep full product data for variants and images
+        variants: product.variants || { size: [], color: [], combination: [] },
+        images: product.images || [],
+        stock_quantity: product.stock_quantity
       }));
 
       setCategories(categoriesRes.success ? categoriesRes.data || [] : []);
@@ -91,32 +79,6 @@ export default function Featured() {
     } finally {
       setLoading(false);
     }
-  };
-
-  /* ===============================
-      Reviews Logic
-  =============================== */
-
-  const buildReviewsMap = (response) => {
-    if (!response.success || !Array.isArray(response.data)) return {};
-
-    return response.data.reduce((acc, review) => {
-      const pid = review.product_id;
-      if (!acc[pid]) acc[pid] = { sum: 0, count: 0 };
-      acc[pid].sum += Number(review.rating || 0);
-      acc[pid].count += 1;
-      return acc;
-    }, {});
-  };
-
-  const getReviewStats = (productId, reviewsMap) => {
-    const stats = reviewsMap[productId];
-    return stats?.count
-      ? {
-          average_rating: stats.sum / stats.count,
-          total_reviews: stats.count
-        }
-      : { average_rating: 0, total_reviews: 0 };
   };
 
   /* ===============================
