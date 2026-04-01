@@ -27,6 +27,7 @@ const ProductDetails = Loadable(lazy(() => import('pages/features/gest/ProductDe
 const OrderDetails = Loadable(lazy(() => import('pages/features/gest/OrderDetails/OrderDetails.jsx')));
 const Profile = Loadable(lazy(() => import('pages/features/gest/Profile/Profile.jsx')));
 const Checkout = Loadable(lazy(() => import('pages/features/gest/Checkout/Checkout.jsx')));
+const GuestCheckout = Loadable(lazy(() => import('pages/features/gest/Checkout/GuestCheckout.jsx')));
 const PaymentForm = Loadable(lazy(() => import('pages/features/gest/Payment/PaymentForm.jsx')));
 const PaymentSuccess = Loadable(lazy(() => import('pages/features/gest/Payment/PaymentSuccess.jsx')));
 const PaymentFailed = Loadable(lazy(() => import('pages/features/gest/Payment/PaymentFailed.jsx')));
@@ -112,6 +113,10 @@ const MainRoutes = {
         {
           path: 'checkout',
           element: <Checkout />
+        },
+        {
+          path: 'guest-checkout',
+          element: <GuestCheckout />
         },
         {
           path: 'payment/:orderId',

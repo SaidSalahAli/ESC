@@ -101,14 +101,31 @@ class EmailService
                 throw new \Exception('Order not found');
             }
 
-            $user = $userModel->find($order['user_id']);
-            if (!$user) {
-                throw new \Exception('User not found');
+            // Handle both registered users and guest orders
+            $user = null;
+            if ($order['is_guest']) {
+                // For guest orders, use guest email and name
+                $email = $order['guest_email'];
+                $name = $order['guest_name'];
+                // Create a fake user object for guest
+                $user = (object)[
+                    'first_name' => explode(' ', $name)[0],
+                    'last_name' => implode(' ', array_slice(explode(' ', $name), 1)),
+                    'email' => $email
+                ];
+            } else {
+                // For registered users, fetch from database
+                $user = $userModel->find($order['user_id']);
+                if (!$user) {
+                    throw new \Exception('User not found');
+                }
+                $email = $user['email'];
+                $name = $user['first_name'] . ' ' . $user['last_name'];
             }
 
             $this->mailer->clearAllRecipients();
             $this->mailer->clearAttachments();
-            $this->mailer->addAddress($user['email'], $user['first_name'] . ' ' . $user['last_name']);
+            $this->mailer->addAddress($email, $name);
 
             $strings = $this->getEmailLanguageStrings($language);
             $this->mailer->Subject = $strings['invoice_subject'] . ' #' . $order['order_number'];

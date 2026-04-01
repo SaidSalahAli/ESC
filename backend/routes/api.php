@@ -12,6 +12,7 @@ use App\Controllers\AuthController;
 use App\Controllers\ProductController;
 use App\Controllers\CartController;
 use App\Controllers\OrderController;
+use App\Controllers\GuestCheckoutController;
 use App\Controllers\PaymentController;
 use App\Controllers\AdminController;
 use App\Controllers\HealthController;
@@ -169,6 +170,12 @@ $router->post('/admin/shipping-governorates/{id}/toggle', AdminController::class
 
 // Public Shipping Governorates (for checkout dropdown)
 $router->get('/shipping-governorates', AdminController::class, 'getShippingGovernorates');
+
+// ============================================
+// Guest Checkout (No Authentication Required)
+// ============================================
+$router->post('/guest-checkout', GuestCheckoutController::class, 'createGuestOrder');
+$router->get('/guest-checkout/orders/{orderNumber}', GuestCheckoutController::class, 'getGuestOrder');
 
 // Payment Management
 $router->post('/admin/payment/{orderId}/refund', PaymentController::class, 'refund', [AdminMiddleware::class]);

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
-import { Box, Container, Typography, CircularProgress, Button, Stack, TextField, Alert } from '@mui/material';
+import { Box, Container, Typography, CircularProgress, Button, Stack, TextField, Alert, Link } from '@mui/material';
 
 import CardItem from 'components/CardItem';
 import { cartService } from 'api/cart';
@@ -186,7 +186,15 @@ export default function Cart() {
 
   async function proceedToCheckout() {
     if (!isLoggedIn) {
-      navigate('/login');
+      // Show options to login or checkout as guest
+      openSnackbar({
+        open: true,
+        message: 'Choose checkout method',
+        variant: 'alert',
+        alert: { color: 'info' }
+      });
+      // For now, navigate to guest checkout
+      navigate('/guest-checkout');
       return;
     }
 
@@ -310,8 +318,17 @@ export default function Cart() {
               )}
 
               <Button fullWidth variant="contained" size="large" sx={{ mt: 3 }} disabled={!cartItems.length} onClick={proceedToCheckout}>
-                {!isLoggedIn ? <FormattedMessage id="login-to-checkout" /> : <FormattedMessage id="proceed-to-checkout" />}
+                {!isLoggedIn ? <FormattedMessage id="proceed-to-checkout" /> : <FormattedMessage id="proceed-to-checkout" />}
               </Button>
+
+              {!isLoggedIn && (
+                <Typography variant="caption" sx={{ display: 'block', mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
+                  or{' '}
+                  <Link href="/login" sx={{ color: '#f0a500', fontWeight: 600, textDecoration: 'none' }}>
+                    login for faster checkout
+                  </Link>
+                </Typography>
+              )}
 
               <Button fullWidth variant="outlined" sx={{ mt: 1.5 }} onClick={clearCart}>
                 <FormattedMessage id="clear-cart" />

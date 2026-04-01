@@ -37,9 +37,15 @@ class InvoicePdfService
                 throw new \Exception('Order not found');
             }
 
-            $this->user = $userModel->find($this->order['user_id']);
-            if (!$this->user) {
-                throw new \Exception('User not found');
+            // Handle both registered users and guest orders
+            if ($this->order['user_id']) {
+                $this->user = $userModel->find($this->order['user_id']);
+                if (!$this->user) {
+                    throw new \Exception('User not found');
+                }
+            } else {
+                // For guest orders, use guest information
+                $this->user = null;
             }
 
             return $this->generateMpdfInvoice($language, $returnPath);
@@ -313,8 +319,18 @@ class InvoicePdfService
             <td>
                 <div class="meta-label">' . $strings['bill_to_label'] . '</div>
                 <div class="meta-value">
-                    <strong>' . htmlspecialchars(($this->user['first_name'] ?? '') . ' ' . ($this->user['last_name'] ?? '')) . '</strong><br>
-                    ' . $shippingAddress . '
+                    <strong>' . htmlspecialchars(
+                        $this->order['is_guest'] 
+                            ? $this->order['guest_name'] 
+                            : (($this->user['first_name'] ?? '') . ' ' . ($this->user['last_name'] ?? ''))
+                    ) . '</strong><br>
+                    ' . $shippingAddress . '<br>
+                    <br>
+                    <strong>Contact Information:</strong><br>
+                    ' . ($this->order['is_guest'] 
+                        ? 'Email: ' . htmlspecialchars($this->order['guest_email']) . '<br>Phone: ' . htmlspecialchars($this->order['guest_phone'])
+                        : 'Email: ' . htmlspecialchars($this->user['email'] ?? 'N/A') . '<br>Phone: ' . htmlspecialchars($this->user['phone'] ?? 'N/A')
+                    ) . '
                 </div>
             </td>
         </tr>
