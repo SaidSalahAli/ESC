@@ -12,6 +12,7 @@ import LoadingScreen from 'components/LoadingScreen';
 
 // auth-provider
 import { JWTProvider as AuthProvider } from 'contexts/JWTContext';
+import { CartDrawerProvider } from 'contexts/CartDrawerContext';
 
 // ==============================|| APP - THEME, ROUTER, LOCAL  ||============================== //
 
@@ -24,10 +25,12 @@ export default function App() {
           <Locales>
             <ScrollTop>
               <AuthProvider>
-                <>
-                  <RouterProvider router={router} />
-                  <Snackbar />
-                </>
+                <CartDrawerProvider>
+                  <>
+                    <RouterProvider router={router} />
+                    <Snackbar />
+                  </>
+                </CartDrawerProvider>
               </AuthProvider>
             </ScrollTop>
           </Locales>

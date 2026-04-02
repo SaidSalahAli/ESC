@@ -22,12 +22,11 @@ const About = Loadable(lazy(() => import('pages/features/gest/AboutUs/AboutUs.js
 const Contact = Loadable(lazy(() => import('pages/features/gest/ContactUs/ContactUs.jsx')));
 const ReturnsPolicy = Loadable(lazy(() => import('pages/features/gest/Policy/ReturnsPolicy.jsx')));
 const ChatBot = Loadable(lazy(() => import('pages/features/gest/Chatbot/Chatbot.jsx')));
-const Card = Loadable(lazy(() => import('pages/features/gest/Cart/Cart.jsx')));
 const ProductDetails = Loadable(lazy(() => import('pages/features/gest/ProductDetails/ProductDetails.jsx')));
 const OrderDetails = Loadable(lazy(() => import('pages/features/gest/OrderDetails/OrderDetails.jsx')));
 const Profile = Loadable(lazy(() => import('pages/features/gest/Profile/Profile.jsx')));
 const Checkout = Loadable(lazy(() => import('pages/features/gest/Checkout/Checkout.jsx')));
-const GuestCheckout = Loadable(lazy(() => import('pages/features/gest/Checkout/GuestCheckout.jsx')));
+const GuestOrderConfirmation = Loadable(lazy(() => import('pages/features/gest/Checkout/GuestOrderConfirmation.jsx')));
 const PaymentForm = Loadable(lazy(() => import('pages/features/gest/Payment/PaymentForm.jsx')));
 const PaymentSuccess = Loadable(lazy(() => import('pages/features/gest/Payment/PaymentSuccess.jsx')));
 const PaymentFailed = Loadable(lazy(() => import('pages/features/gest/Payment/PaymentFailed.jsx')));
@@ -90,10 +89,7 @@ const MainRoutes = {
           path: 'chatbot',
           element: <ChatBot />
         },
-        {
-          path: 'card',
-          element: <Card />
-        },
+    
         {
           path: 'products/:id',
           element: <ProductDetails />
@@ -115,8 +111,8 @@ const MainRoutes = {
           element: <Checkout />
         },
         {
-          path: 'guest-checkout',
-          element: <GuestCheckout />
+          path: 'guest-checkout/orders/:orderNumber',
+          element: <GuestOrderConfirmation />
         },
         {
           path: 'payment/:orderId',

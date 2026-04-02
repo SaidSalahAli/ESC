@@ -1,4 +1,3 @@
-// src/pages/Collections.jsx
 import { useEffect, useMemo, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 
@@ -23,17 +22,27 @@ import {
   Typography,
   MenuItem,
   Select,
-  InputLabel,
   FormControl,
-  TextField,
   Button,
   Pagination,
   CircularProgress,
-  Stack
+  Stack,
+  Slider,
+  Checkbox,
+  FormControlLabel,
+  Divider,
+  Collapse,
+  IconButton
 } from '@mui/material';
+
+import TuneIcon from '@mui/icons-material/Tune';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 const FALLBACK_IMAGES = [Card1, Card2, Card3, Card4, Card5, Card6];
 const LIMIT = 20;
+
+const sizeOptions = ['XS/S', 'S/M', 'M/L', 'L/XL', 'XL/2XL', '2XL/3XL', '45'];
 
 export default function Collections() {
   const { isLoggedIn } = useAuth();
@@ -45,31 +54,43 @@ export default function Collections() {
 
   const [filters, setFilters] = useState({
     category: 'all',
-    minPrice: '',
-    maxPrice: '',
-    page: 1
+    minPrice: 0,
+    maxPrice: 600,
+    page: 1,
+    sort: 'featured'
   });
 
   const [totalPages, setTotalPages] = useState(1);
 
-  /* ───────────── Helpers ───────────── */
+  const [openSections, setOpenSections] = useState({
+    price: true,
+    category: true,
+  });
 
   const categoryMap = useMemo(() => {
     const map = {};
-    categories.forEach((c) => (map[c.id] = c));
+    categories.forEach((c) => {
+      map[c.id] = c;
+    });
     return map;
   }, [categories]);
 
   const buildParams = () => {
-    const params = { page: filters.page, limit: LIMIT };
+    const params = {
+      page: filters.page,
+      limit: LIMIT,
+      min_price: filters.minPrice,
+      max_price: filters.maxPrice
+    };
 
     if (filters.category !== 'all') {
       const selected = categories.find((c) => c.slug === filters.category);
       if (selected) params.category_id = selected.id;
     }
 
-    if (filters.minPrice) params.min_price = filters.minPrice;
-    if (filters.maxPrice) params.max_price = filters.maxPrice;
+    if (filters.sort && filters.sort !== 'featured') {
+      params.sort = filters.sort;
+    }
 
     return params;
   };
@@ -96,15 +117,12 @@ export default function Collections() {
         slug: product.slug,
         main_image: product.main_image,
         stock_quantity: product.stock_quantity,
-        // Include full product data for ProductCard
         images: product.images || [],
         variants: product.variants || { size: [], color: [], combination: [] },
         reviews: product.reviews || { average_rating: 0, total_reviews: 0 }
       };
     });
   };
-
-  /* ───────────── Fetch Categories ───────────── */
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -119,8 +137,6 @@ export default function Collections() {
     fetchCategories();
   }, []);
 
-  /* ───────────── Fetch Products ───────────── */
-
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
@@ -133,7 +149,10 @@ export default function Collections() {
           throw new Error(res.message || 'Failed to load products');
         }
 
-        setProducts(normalizeProducts(res.data));
+        let normalized = normalizeProducts(res.data);
+
+   
+        setProducts(normalized);
         setTotalPages(res.data?.pagination?.pages || 1);
       } catch (err) {
         setError(err.message);
@@ -146,220 +165,332 @@ export default function Collections() {
     fetchProducts();
   }, [filters, categories]);
 
-  /* ───────────── Input Style ───────────── */
-
-  const inputSx = {
-    '& .MuiOutlinedInput-root': {
-      bgcolor: '#fff',
-      borderRadius: 1,
-      '&:hover fieldset': { borderColor: '#f0a500' },
-      '&.Mui-focused fieldset': {
-        borderColor: '#f0a500',
-        borderWidth: 2
-      }
-    }
+  const toggleSection = (key) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
-  /* ═══════════════════════════════════ */
+
+
+  const clearFilters = () => {
+    setFilters({
+      category: 'all',
+      minPrice: 0,
+      maxPrice: 600,
+      selectedSizes: [],
+      page: 1,
+      sort: 'featured'
+    });
+  };
+
+  const sidebarSectionHeader = (label, key) => (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 2
+      }}
+    >
+      <Typography sx={{ fontWeight: 700, fontSize: '1.05rem' }}>{label}</Typography>
+
+      <IconButton
+        size="small"
+        onClick={() => toggleSection(key)}
+        sx={{
+          bgcolor: '#111',
+          color: '#fff',
+          width: 28,
+          height: 28,
+          '&:hover': { bgcolor: '#222' }
+        }}
+      >
+        {openSections[key] ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+      </IconButton>
+    </Box>
+  );
 
   return (
-    <Box sx={{ bgcolor: '#f3f3f3', minHeight: '100vh' }}>
+    <Box sx={{ bgcolor: '#fff', minHeight: '100vh' }}>
       {/* HERO */}
-
       <Box
         sx={{
           backgroundImage: `url(${ProfileImg})`,
           backgroundPosition: 'center',
           backgroundSize: 'cover',
           color: '#fff',
-          pt: { xs: 8, md: 20 },
-          pb: { xs: 6, md: 10 },
-          textAlign: 'center'
+          pt: { xs: 8, md: 16 },
+          pb: { xs: 6, md: 8 },
+          textAlign: 'center',
+          position: 'relative'
         }}
       >
-        <Typography variant="h3" fontWeight={700} sx={{ fontSize: { xs: '1.8rem', md: '2.6rem' }, mb: 1.5 }}>
-          <FormattedMessage id="collections-headline" />
-        </Typography>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(0,0,0,0.32)'
+          }}
+        />
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography variant="h3" fontWeight={700} sx={{ fontSize: { xs: '1.8rem', md: '2.6rem' }, mb: 1.5 }}>
+            <FormattedMessage id="collections-headline" />
+          </Typography>
 
-        <Typography color="rgba(255,255,255,0.8)">
-          <FormattedMessage id="collections-copy" />
-        </Typography>
+          <Typography color="rgba(255,255,255,0.86)">
+            <FormattedMessage id="collections-copy" />
+          </Typography>
+        </Box>
       </Box>
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* FILTER BAR */}
-
-        <Box
-          sx={{
-            bgcolor: '#fff',
-            border: '1px solid #ddd',
-            borderRadius: 1,
-            p: 2,
-            mb: 3,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 2,
-            alignItems: 'center'
-          }}
-        >
-          <Typography fontWeight={600}>
-            <FormattedMessage id="filter-by" />
-          </Typography>
-
-          {/* CATEGORY */}
-
-          <FormControl size="small" sx={{ minWidth: 180, ...inputSx }}>
-            <InputLabel>
-              <FormattedMessage id="category" />
-            </InputLabel>
-
-            <Select
-              value={filters.category}
-              label="Category"
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  category: e.target.value,
-                  page: 1
-                }))
-              }
+        <Grid container spacing={4}>
+          {/* LEFT FILTER SIDEBAR */}
+          <Grid item xs={12} md={3} lg={2.5}>
+            <Box
+              sx={{
+                position: { md: 'sticky' },
+                top: { md: 100 },
+                pr: { md: 1 }
+              }}
             >
-              <MenuItem value="all">
-                <FormattedMessage id="all-categories" />
-              </MenuItem>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 3
+                }}
+              >
+                <TuneIcon sx={{ fontSize: 20 }} />
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem' }}>Filters</Typography>
+              </Box>
 
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.slug}>
-                  {cat.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              {/* PRICE */}
+              <Box sx={{ mb: 3 }}>
+                {sidebarSectionHeader('Price', 'price')}
 
-          {/* PRICE RANGE */}
+                <Collapse in={openSections.price}>
+                  <Box sx={{ px: 1 }}>
+                    <Slider
+                      value={[filters.minPrice, filters.maxPrice]}
+                      min={0}
+                      max={600}
+                      step={10}
+                      onChange={(_, value) => {
+                        setFilters((prev) => ({
+                          ...prev,
+                          minPrice: value[0],
+                          maxPrice: value[1],
+                          page: 1
+                        }));
+                      }}
+                      sx={{
+                        color: '#111',
+                        '& .MuiSlider-thumb': {
+                          width: 14,
+                          height: 14,
+                          bgcolor: '#111'
+                        }
+                      }}
+                    />
 
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <TextField
-              size="small"
-              label={<FormattedMessage id="min-price" />}
-              type="number"
-              value={filters.minPrice}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  minPrice: e.target.value,
-                  page: 1
-                }))
-              }
-              sx={{ width: 110, ...inputSx }}
-            />
+                    <Stack direction="row" spacing={2} mt={2}>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          border: '1px solid #e2e2e2',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 1.5,
+                          textAlign: 'center',
+                          color: '#8b8f98'
+                        }}
+                      >
+                        {filters.minPrice}
+                      </Box>
 
-            <Typography color="text.secondary">–</Typography>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: '#8b8f98'
+                        }}
+                      >
+                        to
+                      </Box>
 
-            <TextField
-              size="small"
-              label={<FormattedMessage id="max-price" />}
-              type="number"
-              value={filters.maxPrice}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  maxPrice: e.target.value,
-                  page: 1
-                }))
-              }
-              sx={{ width: 110, ...inputSx }}
-            />
-          </Stack>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          border: '1px solid #e2e2e2',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 1.5,
+                          textAlign: 'center',
+                          color: '#8b8f98'
+                        }}
+                      >
+                        {filters.maxPrice}
+                      </Box>
+                    </Stack>
+                  </Box>
+                </Collapse>
+              </Box>
 
-          {/* CLEAR FILTERS */}
+              <Divider sx={{ mb: 3 }} />
 
-          {(filters.category !== 'all' || filters.minPrice || filters.maxPrice) && (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() =>
-                setFilters({
-                  category: 'all',
-                  minPrice: '',
-                  maxPrice: '',
-                  page: 1
-                })
-              }
-            >
-              <FormattedMessage id="clear-filters" />
-            </Button>
-          )}
+              {/* PRODUCT TYPE */}
+              <Box sx={{ mb: 3 }}>
+                {sidebarSectionHeader('Product type', 'category')}
 
-          {!loading && (
-            <Typography sx={{ ml: 'auto' }}>
-              {products.length} <FormattedMessage id="products-found" />
-            </Typography>
-          )}
-        </Box>
+                <Collapse in={openSections.category}>
+                  <Stack spacing={1}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={filters.category === 'all'}
+                          onChange={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              category: 'all',
+                              page: 1
+                            }))
+                          }
+                          sx={{ color: '#cfcfcf' }}
+                        />
+                      }
+                      label="All"
+                    />
 
-        {/* LOADING */}
+                    {categories.map((cat) => (
+                      <FormControlLabel
+                        key={cat.id}
+                        control={
+                          <Checkbox
+                            checked={filters.category === cat.slug}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                category: cat.slug,
+                                page: 1
+                              }))
+                            }
+                            sx={{ color: '#cfcfcf' }}
+                          />
+                        }
+                        label={`${cat.name}`}
+                      />
+                    ))}
+                  </Stack>
+                </Collapse>
+              </Box>
 
-        {loading && (
-          <Box display="flex" justifyContent="center" py={10}>
-            <CircularProgress sx={{ color: '#f0a500' }} />
-          </Box>
-        )}
+              <Divider sx={{ mb: 3 }} />
 
-        {/* ERROR */}
+      
 
-        {!loading && error && (
-          <Box textAlign="center" py={8}>
-            <Typography color="error">{error}</Typography>
-
-            <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-              <FormattedMessage id="try-again" />
-            </Button>
-          </Box>
-        )}
-
-        {/* EMPTY */}
-
-        {!loading && !error && products.length === 0 && (
-          <Box textAlign="center" py={10}>
-            <Typography variant="h6">
-              <FormattedMessage id="no-products" />
-            </Typography>
-
-            <Typography color="text.secondary">
-              <FormattedMessage id="adjust-filters" />
-            </Typography>
-          </Box>
-        )}
-
-        {/* PRODUCTS */}
-
-        {!loading && !error && products.length > 0 && (
-          <Grid container spacing={2}>
-            {products.map((p) => (
-              <Grid item key={p.id} xs={12} sm={6} md={4} lg={3}>
-                <ProductCard item={p} />
-              </Grid>
-            ))}
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={clearFilters}
+                sx={{
+                  mt: 2,
+                  borderColor: '#111',
+                  color: '#111',
+                  borderRadius: 0,
+                  py: 1.2,
+                  '&:hover': {
+                    borderColor: '#111',
+                    bgcolor: '#111',
+                    color: '#fff'
+                  }
+                }}
+              >
+                <FormattedMessage id="clear-filters" defaultMessage="Clear Filters" />
+              </Button>
+            </Box>
           </Grid>
-        )}
 
-        {/* PAGINATION */}
+          {/* RIGHT CONTENT */}
+          <Grid item xs={12} md={9} lg={9.5}>
+            {/* Top bar */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 3,
+                gap: 2,
+                flexWrap: 'wrap'
+              }}
+            >
+              <Typography sx={{ color: '#444', fontWeight: 500 }}>{!loading ? `${products.length} products` : 'Loading...'}</Typography>
 
-        {!loading && products.length > 0 && totalPages > 1 && (
-          <Box display="flex" justifyContent="center" mt={5}>
-            <Pagination
-              count={totalPages}
-              page={filters.page}
-              onChange={(_, value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  page: value
-                }))
-              }
-            />
-          </Box>
-        )}
+       
+            </Box>
+
+            {/* LOADING */}
+            {loading && (
+              <Box display="flex" justifyContent="center" py={10}>
+                <CircularProgress sx={{ color: '#111' }} />
+              </Box>
+            )}
+
+            {/* ERROR */}
+            {!loading && error && (
+              <Box textAlign="center" py={8}>
+                <Typography color="error">{error}</Typography>
+
+                <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
+                  <FormattedMessage id="try-again" />
+                </Button>
+              </Box>
+            )}
+
+            {/* EMPTY */}
+            {!loading && !error && products.length === 0 && (
+              <Box textAlign="center" py={10}>
+                <Typography variant="h6">
+                  <FormattedMessage id="no-products" />
+                </Typography>
+
+                <Typography color="text.secondary">
+                  <FormattedMessage id="adjust-filters" />
+                </Typography>
+              </Box>
+            )}
+
+            {/* PRODUCTS */}
+            {!loading && !error && products.length > 0 && (
+              <Grid container spacing={3}>
+                {products.map((p) => (
+                  <Grid item key={p.id} xs={12} sm={6} lg={4}>
+                    <ProductCard item={p} />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            {/* PAGINATION */}
+            {!loading && products.length > 0 && totalPages > 1 && (
+              <Box display="flex" justifyContent="center" mt={5}>
+                <Pagination
+                  count={totalPages}
+                  page={filters.page}
+                  onChange={(_, value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      page: value
+                    }))
+                  }
+                />
+              </Box>
+            )}
+          </Grid>
+        </Grid>
       </Container>
     </Box>
   );

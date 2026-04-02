@@ -10,6 +10,8 @@ import useConfig from 'hooks/useConfig';
 import useAuth from 'hooks/useAuth';
 import { cartService } from 'api/cart';
 import { getGuestCartCount } from 'utils/guestCart';
+import { useCartDrawer } from 'contexts/CartDrawerContext';
+import CartDrawer from 'components/CartDrawer/CartDrawer';
 import './header.css';
 import UserMenuDropdown from '../Dashboard/Header/HeaderContent/UserMenuDropdown';
 
@@ -25,6 +27,7 @@ export default function Header() {
 
   const { i18n, onChangeLocalization } = useConfig();
   const { isLoggedIn, user, logout } = useAuth();
+  const { cartDrawerOpen, openCartDrawer, closeCartDrawer } = useCartDrawer();
   const intl = useIntl();
 
   const isHomePage = location.pathname === '/';
@@ -34,7 +37,6 @@ export default function Header() {
     const updateCartCount = async () => {
       if (isLoggedIn) {
         try {
-
           const response = await cartService.getCartCount();
           if (response.success) setCartCount(response.data?.count || 0);
         } catch (err) {
@@ -152,10 +154,10 @@ export default function Header() {
               </div>
 
               {/* Cart */}
-              <RouterLink to="/card" className="cart-btn">
-                <ShoppingCart size="20" />
+              <button className="cart-btn" onClick={openCartDrawer} aria-label="Open cart">
+                <ShoppingCart size="20" backgroundColor="#ffff" />
                 <span style={{ marginLeft: 11 }}>{cartCount ? ` ${cartCount}` : 0}</span>
-              </RouterLink>
+              </button>
 
               {/* ===== User Menu ===== */}
               {isLoggedIn ? (
@@ -219,39 +221,7 @@ export default function Header() {
         </ul>
 
         <div className="mobile-nav-buttons">
-          {/* Language Selector in Mobile */}
-          <div className="mobile-language-selector">
-            <button
-              className={`mobile-language-option ${i18n === 'en' ? 'active' : ''}`}
-              onClick={() => {
-                if (isLoggedIn) onChangeLocalization('en');
-                setMobileOpen(false);
-                setTimeout(() => window.location.reload(), 100);
-              }}
-            >
-              <span>
-                <FormattedMessage id="english" />
-              </span>
-              <span className="lang-code">(EN)</span>
-            </button>
-            <button
-              className={`mobile-language-option ${i18n === 'ar' ? 'active' : ''}`}
-              onClick={() => {
-                if (isLoggedIn) onChangeLocalization('ar');
-                setMobileOpen(false);
-                setTimeout(() => window.location.reload(), 100);
-              }}
-            >
-              <span>
-                <FormattedMessage id="arabic" />
-              </span>
-              <span className="lang-code">(AR)</span>
-            </button>
-          </div>
 
-          <RouterLink to="/card" className="cart-btn" onClick={() => setMobileOpen(false)}>
-            <FormattedMessage id="cart" /> {cartCount}
-          </RouterLink>
 
           {isLoggedIn ? (
             <>
@@ -280,6 +250,9 @@ export default function Header() {
 
       {/* Overlay */}
       <div className={`menu-overlay ${mobileOpen ? 'active' : ''}`} onClick={() => setMobileOpen(false)} />
+
+      {/* Cart Drawer */}
+      <CartDrawer open={cartDrawerOpen} onClose={closeCartDrawer} />
 
       {/* Search Overlay */}
       <div className={`search-overlay ${searchOpen ? 'active' : ''}`}>

@@ -1,0 +1,73 @@
+/* ==============================|| CART DRAWER STYLES ||============================== */
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Smooth transitions for drawer content */
+.MuiDrawer-paper {
+  animation: slideInRight 0.3s cubic-bezier(0.35, 0, 0.25, 1);
+}
+
+/* Overlay backdrop animation */
+.MuiBackdrop-root {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Smooth scrolling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Button animations */
+button {
+  transition: all 0.2s cubic-bezier(0.35, 0, 0.25, 1);
+}
+
+button:active {
+  transform: scale(0.95) !important;
+}
+
+/* Card hover effects */
+.MuiCard-root {
+  transition: all 0.3s cubic-bezier(0.35, 0, 0.25, 1);
+}
+
+/* Icon button animations */
+.MuiIconButton-root {
+  transition: all 0.2s ease-in-out;
+}
+
+.MuiIconButton-root:hover {
+  transform: scale(1.1);
+}

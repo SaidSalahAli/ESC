@@ -26,6 +26,11 @@ class Order extends Model
         'billing_address_id',
         'notes',
         'tracking_number',
+        'is_guest',
+        'guest_email',
+        'guest_phone',
+        'guest_name',
+        'view_token',
     ];
 
     /**

@@ -307,7 +307,7 @@ class GuestCheckoutController
     {
         try {
             $userModel = new \App\Models\User();
-            
+
             // Check if guest user already exists with this email
             $existingUser = $userModel->findByEmail($email);
             if ($existingUser) {
@@ -375,29 +375,23 @@ class GuestCheckoutController
             $mailer->addAddress($email, $name);
 
             // Subject and body
-            $mailer->Subject = 'Your ESC Wear Order Confirmation - ' . $order['order_number'];
+            $mailer->Subject = 'Your ESC Order Is Confirmed!';
             $mailer->isHTML(true);
 
-            // Build email body
-            $baseUrl = $_ENV['APP_URL'] ?? 'https://escwear.com';
-            $trackingUrl = "{$baseUrl}/guest-order-track/{$order['order_number']}?token={$viewToken}";
+            // Detect language preference (default to English)
+            $language = 'en';
+            if (stripos($name, 'أ') !== false || stripos($email, 'ar') !== false) {
+                $language = 'ar';
+            }
 
-            $mailer->Body = "
-                <h2>Thank you for your order!</h2>
-                <p>Dear {$name},</p>
-                <p>We have received your order and will process it shortly.</p>
-                <p><strong>Order Number:</strong> {$order['order_number']}</p>
-                <p><strong>Order Total:</strong> EGP {$order['total']}</p>
-                <p><strong>Shipping Address:</strong><br>
-                {$order['shipping_address']['first_name']} {$order['shipping_address']['last_name']}<br>
-                {$order['shipping_address']['address_line1']}<br>
-                {$order['shipping_address']['city']}, {$order['shipping_address']['governorate']}<br>
-                {$order['shipping_address']['country']}</p>
-                <p><a href='{$trackingUrl}'>Track your order</a></p>
-                <p>Best regards,<br>ESC Wear Team</p>
-            ";
-
-            $mailer->AltBody = "Thank you for your order. Your order number is {$order['order_number']}";
+            // Build professional email body
+            if ($language === 'ar') {
+                $mailer->Body = $this->buildGuestOrderConfirmationEmailAr($name, $order, $viewToken);
+                $mailer->AltBody = 'شكراً لطلبك';
+            } else {
+                $mailer->Body = $this->buildGuestOrderConfirmationEmailEn($name, $order, $viewToken);
+                $mailer->AltBody = 'Thank you for your order';
+            }
 
             // Attach PDF
             if ($pdfContent) {
@@ -411,5 +405,286 @@ class GuestCheckoutController
             error_log('Failed to send guest order email: ' . $e->getMessage());
             return false;
         }
+    }
+
+    private function buildGuestOrderConfirmationEmailEn($name, $order, $viewToken)
+    {
+        $shippingAddress = $order['shipping_address'] ?? [];
+        $addressLine = '';
+        if ($shippingAddress) {
+            $addressLine = $shippingAddress['first_name'] . ' ' . $shippingAddress['last_name'] . ', ' .
+                $shippingAddress['address_line1'];
+            if (!empty($shippingAddress['address_line2'])) {
+                $addressLine .= ', ' . $shippingAddress['address_line2'];
+            }
+            $addressLine .= ', ' . $shippingAddress['city'] . ', ' . $shippingAddress['governorate'] . ' ' .
+                ($shippingAddress['postal_code'] ?? '');
+        }
+
+        // Build order items table
+        $itemsTable = '';
+        if (!empty($order['items'])) {
+            foreach ($order['items'] as $item) {
+                $itemTotal = floatval($item['price'] ?? 0) * intval($item['quantity'] ?? 1);
+                $itemsTable .= '
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; color: #555;">' . htmlspecialchars($item['product_name'] ?? '') . '</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #555;">' . intval($item['quantity'] ?? 1) . '</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; color: #555;">EGP ' . number_format(floatval($item['price'] ?? 0), 2) . '</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #333;">EGP ' . number_format($itemTotal, 2) . '</td>
+                    </tr>';
+            }
+        }
+
+        $baseUrl = $_ENV['APP_URL'] ?? 'https://escwear.com';
+        $trackingUrl = "{$baseUrl}/guest-checkout/orders/{$order['order_number']}?view_token={$viewToken}";
+
+        return '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
+        .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+        .email-body { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #ffd814; padding-bottom: 20px; }
+        .logo { font-size: 28px; font-weight: bold; color: #0f1111; margin-bottom: 10px; }
+        .greeting { font-size: 22px; font-weight: bold; color: #0f1111; margin-bottom: 20px; text-align: center; }
+        .content { color: #333; font-size: 15px; line-height: 1.8; }
+        .section { margin: 25px 0; padding: 15px; background-color: #f9f9f9; border-radius: 6px; border-left: 4px solid #ffd814; }
+        .section-title { font-weight: bold; color: #0f1111; margin-bottom: 12px; font-size: 16px; }
+        .detail-item { margin: 8px 0; color: #555; }
+        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .order-table th { background-color: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; color: #0f1111; border-bottom: 2px solid #ddd; }
+        .order-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .summary-table { width: 100%; margin: 20px 0; }
+        .summary-table tr { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .summary-table .total-row { font-weight: bold; font-size: 18px; color: #B12704; border-top: 2px solid #ddd; border-bottom: none; padding: 15px 0; }
+        .button { display: inline-block; background-color: #ffd814; color: #0f1111; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+        .footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; color: #666; font-size: 13px; text-align: center; }
+        .tagline { font-weight: bold; color: #ffd814; margin-top: 10px; }
+        .icon { display: inline-block; width: 20px; height: 20px; margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-body">
+            <div class="header">
+                <div class="logo">🛍️ ESC Wear</div>
+            </div>
+
+            <div class="greeting">Thank you for your order!</div>
+
+            <div class="content">
+                <p>Dear <strong>' . htmlspecialchars(explode(' ', $name)[0]) . '</strong>,</p>
+                <p>Thank you for choosing ESC Wear! We have received your order and our team is now carefully preparing it just for you. Every piece is designed to give you freedom of movement while keeping your authenticity — with no compromises.</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title">✓ Order Confirmed</div>
+                <div class="detail-item"><strong>Order Number:</strong> ' . htmlspecialchars($order['order_number']) . '</div>
+                <div class="detail-item"><strong>Order Date:</strong> ' . date('M d, Y', strtotime($order['created_at'])) . '</div>
+                <div class="detail-item"><strong>Expected Delivery:</strong> 2-3 Business Days</div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📦 Order Items</div>
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: right;">Price</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ' . $itemsTable . '
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">💰 Order Summary</div>
+                <div style="margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ddd;">
+                        <span>Subtotal:</span>
+                        <span>EGP ' . number_format(floatval($order['subtotal'] ?? 0), 2) . '</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ddd;">
+                        <span>Shipping:</span>
+                        <span><strong>EGP ' . number_format(floatval($order['shipping_cost'] ?? 0), 2) . '</strong></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 15px 0; font-weight: bold; font-size: 18px; color: #B12704; border-top: 2px solid #ddd;">
+                        <span>Total:</span>
+                        <span>EGP ' . number_format(floatval($order['total'] ?? 0), 2) . '</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📍 Shipping Address</div>
+                <div class="detail-item">' . htmlspecialchars($addressLine) . '</div>
+            </div>
+
+            <div class="content" style="text-align: center;">
+                <p>We will send you shipping updates via email. Your order will be processed and shipped soon.</p>
+                <a href="' . htmlspecialchars($trackingUrl) . '" class="button">Track Your Order</a>
+            </div>
+
+            <div class="section" style="background-color: #fffbf0; border-left-color: #ffd814;">
+                <p style="margin: 0; color: #0f1111;">💡 <strong>Join the ESC Community</strong></p>
+                <p style="margin: 5px 0; color: #555; font-size: 14px;">Connect with confident movers: <strong>@esc.wear_ | @esc.community_</strong></p>
+            </div>
+
+            <div class="footer">
+                <p style="margin: 0;">With love,<br><strong style="font-size: 16px;">ESC Wear Team</strong></p>
+                <p class="tagline">ESC-ing the average life! 🌟</p>
+                <p style="margin-top: 15px; font-size: 12px; color: #999;">This is an automated email. Please do not reply directly. For support, contact us through our website.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>';
+    }
+
+    private function buildGuestOrderConfirmationEmailAr($name, $order, $viewToken)
+    {
+        $shippingAddress = $order['shipping_address'] ?? [];
+        $addressLine = '';
+        if ($shippingAddress) {
+            $addressLine = $shippingAddress['first_name'] . ' ' . $shippingAddress['last_name'] . ', ' .
+                $shippingAddress['address_line1'];
+            if (!empty($shippingAddress['address_line2'])) {
+                $addressLine .= ', ' . $shippingAddress['address_line2'];
+            }
+            $addressLine .= ', ' . $shippingAddress['city'] . ', ' . $shippingAddress['governorate'] . ' ' .
+                ($shippingAddress['postal_code'] ?? '');
+        }
+
+        // Build order items table (RTL)
+        $itemsTable = '';
+        if (!empty($order['items'])) {
+            foreach ($order['items'] as $item) {
+                $itemTotal = floatval($item['price'] ?? 0) * intval($item['quantity'] ?? 1);
+                $itemsTable .= '
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; color: #555; text-align: right;">' . htmlspecialchars($item['product_name'] ?? '') . '</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #555;">' . intval($item['quantity'] ?? 1) . '</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: left; color: #555;">ج.م ' . number_format(floatval($item['price'] ?? 0), 2) . '</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: left; font-weight: bold; color: #333;">ج.م ' . number_format($itemTotal, 2) . '</td>
+                    </tr>';
+            }
+        }
+
+        $baseUrl = $_ENV['APP_URL'] ?? 'https://escwear.com';
+        $trackingUrl = "{$baseUrl}/guest-checkout/orders/{$order['order_number']}?view_token={$viewToken}";
+
+        return '<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; direction: rtl; background-color: #f5f5f5; margin: 0; padding: 0; }
+        .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+        .email-body { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #ffd814; padding-bottom: 20px; }
+        .logo { font-size: 28px; font-weight: bold; color: #0f1111; margin-bottom: 10px; }
+        .greeting { font-size: 22px; font-weight: bold; color: #0f1111; margin-bottom: 20px; text-align: center; }
+        .content { color: #333; font-size: 15px; line-height: 1.8; }
+        .section { margin: 25px 0; padding: 15px; background-color: #f9f9f9; border-radius: 6px; border-right: 4px solid #ffd814; }
+        .section-title { font-weight: bold; color: #0f1111; margin-bottom: 12px; font-size: 16px; }
+        .detail-item { margin: 8px 0; color: #555; }
+        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .order-table th { background-color: #f5f5f5; padding: 12px; text-align: right; font-weight: bold; color: #0f1111; border-bottom: 2px solid #ddd; }
+        .order-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .summary-table { width: 100%; margin: 20px 0; }
+        .summary-table tr { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .summary-table .total-row { font-weight: bold; font-size: 18px; color: #B12704; border-top: 2px solid #ddd; border-bottom: none; padding: 15px 0; }
+        .button { display: inline-block; background-color: #ffd814; color: #0f1111; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+        .footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; color: #666; font-size: 13px; text-align: center; }
+        .tagline { font-weight: bold; color: #ffd814; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-body">
+            <div class="header">
+                <div class="logo">🛍️ ESC Wear</div>
+            </div>
+
+            <div class="greeting">شكراً لطلبك!</div>
+
+            <div class="content">
+                <p>مرحباً <strong>' . htmlspecialchars(explode(' ', $name)[0]) . '</strong>،</p>
+                <p>شكرًا لاختيارك ESC Wear! لقد تم استلام طلبك بنجاح، وفريقنا الآن يعمل بعناية لتحضيره خصيصًا لك. كل قطعة مصممة لتمنحك حرية الحركة مع الحفاظ على أصالتك — بدون أي تنازلات.</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title">✓ تم تأكيد الطلب</div>
+                <div class="detail-item"><strong>رقم الطلب:</strong> ' . htmlspecialchars($order['order_number']) . '</div>
+                <div class="detail-item"><strong>تاريخ الطلب:</strong> ' . date('d/m/Y', strtotime($order['created_at'])) . '</div>
+                <div class="detail-item"><strong>موعد التسليم المتوقع:</strong> 2-3 أيام عمل</div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📦 عناصر الطلب</div>
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: right;">المنتج</th>
+                            <th style="text-align: center;">الكمية</th>
+                            <th style="text-align: left;">السعر</th>
+                            <th style="text-align: left;">الإجمالي</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ' . $itemsTable . '
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">💰 ملخص الطلب</div>
+                <div style="margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ddd;">
+                        <span>الإجمالي الفرعي:</span>
+                        <span>ج.م ' . number_format(floatval($order['subtotal'] ?? 0), 2) . '</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ddd;">
+                        <span>الشحن:</span>
+                        <span><strong>ج.م ' . number_format(floatval($order['shipping_cost'] ?? 0), 2) . '</strong></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 15px 0; font-weight: bold; font-size: 18px; color: #B12704; border-top: 2px solid #ddd;">
+                        <span>الإجمالي:</span>
+                        <span>ج.م ' . number_format(floatval($order['total'] ?? 0), 2) . '</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📍 عنوان الشحن</div>
+                <div class="detail-item">' . htmlspecialchars($addressLine) . '</div>
+            </div>
+
+            <div class="content" style="text-align: center;">
+                <p>سنرسل لك تحديثات الشحن عبر البريد الإلكتروني. سيتم معالجة الطلب وشحنه قريباً.</p>
+                <a href="' . htmlspecialchars($trackingUrl) . '" class="button">تتبع طلبك</a>
+            </div>
+
+            <div class="section" style="background-color: #fffbf0; border-right-color: #ffd814;">
+                <p style="margin: 0; color: #0f1111;">💡 <strong>انضمي إلى مجتمع ESC</strong></p>
+                <p style="margin: 5px 0; color: #555; font-size: 14px;">تواصلي مع نساء يتحركن بثقة: <strong>@esc.wear_ | @esc.community_</strong></p>
+            </div>
+
+            <div class="footer">
+                <p style="margin: 0;">مع كل الحب،<br><strong style="font-size: 16px;">فريق ESC Wear</strong></p>
+                <p class="tagline">ESC-ing the average life! 🌟</p>
+                <p style="margin-top: 15px; font-size: 12px; color: #999;">هذا بريد آلي. يرجى عدم الرد عليه مباشرة. للدعم، تواصل معنا من خلال موقعنا.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>';
     }
 }

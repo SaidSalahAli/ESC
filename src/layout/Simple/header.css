@@ -145,6 +145,9 @@
 .right-section.right-dark button,
 .right-section.right-dark a {
   color: var(--esc-text);
+  background-color: #fff;
+  border: none;
+  cursor: pointer;
 }
 
 /* Language Button */
@@ -192,6 +195,7 @@
 .search-btn:hover {
   background: rgba(11, 18, 19, 0.05);
 }
+login-btn
 
 /* Cart Button */
 .cart-btn {
@@ -199,9 +203,9 @@
   align-items: center;
   /* gap: 0.5rem; */
   text-decoration: none;
-
-  border-radius: 4px;
+  border: none;
   font-weight: 500;
+  cursor: pointer;
   transition: all 0.3s ease;
 }
 
@@ -1150,13 +1154,8 @@
   color: var(--esc-primary);
 }
 
-.mobile-nav-buttons .cart-btn:hover {
-  background: var(--esc-primary);
-  color: #fff;
-}
-
 .mobile-nav-buttons .login-btn {
-  background: var(--esc-accent);
+  background: var(--esc-primary-dark);
   color: #fff;
   padding: 0.8rem 1rem;
   border-radius: 4px;
@@ -1169,7 +1168,7 @@
 }
 
 .mobile-nav-buttons .login-btn:hover {
-  background: var(--esc-primary-dark);
+  background: var(--esc-primary);
 }
 
 .menu-overlay {
@@ -1580,7 +1579,9 @@
     display: flex;
     color: white;
   }
-
+  button {
+    background-color: #eee;
+  }
   .search-btn {
     background: none;
     border: none;
