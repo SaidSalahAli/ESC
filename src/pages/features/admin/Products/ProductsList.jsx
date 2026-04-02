@@ -26,12 +26,16 @@ import {
   MenuItem,
   Avatar,
   Stack,
-  Divider
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
-import { Edit, Trash, Add, CloseCircle, Printer } from 'iconsax-react';
+import { Edit, Trash, Add, CloseCircle, Printer, ArrowDown2 } from 'iconsax-react';
 import { adminService } from 'api';
 import { getImageUrl } from 'utils/imageHelper';
 import BarcodePrint from 'components/BarcodePrint';
+import ColorImagesUpload from 'components/ColorImagesUpload';
 import JsBarcode from 'jsbarcode';
 import imageCompression from 'browser-image-compression';
 import { printLabel } from 'utils/printLabel';
@@ -250,21 +254,27 @@ export default function ProductsList() {
   const [imagePreview, setImagePreview] = useState(null);
   const [compressing, setCompressing] = useState(false);
   const [colorsWithSizes, setColorsWithSizes] = useState([]);
-  const [additionalImages, setAdditionalImages] = useState([]);
-  const [existingImages, setExistingImages] = useState([]);
-  const [imagesToDelete, setImagesToDelete] = useState([]);
   const [openColorBarcodeDialog, setOpenColorBarcodeDialog] = useState(false);
   const [selectedColorForBarcode, setSelectedColorForBarcode] = useState(null);
+
+  // State for color images
+  const [colorImages, setColorImages] = useState({}); // { colorLabel: { existing: [], new: [] } }
+  const [colorImagesToDelete, setColorImagesToDelete] = useState([]); // Holds image IDs to delete
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const response = await adminService.getProducts(page + 1, rowsPerPage);
+      console.log('📦 Fetch Products Response:', response); // DEBUG
       if (response.success) {
         setProducts(response.data.products || []);
         setTotalProducts(response.data.pagination?.total || 0);
+        console.log('✅ Products loaded:', response.data.products?.length); // DEBUG
+      } else {
+        console.warn('❌ API returned success: false'); // DEBUG
       }
     } catch (err) {
+      console.error('🔴 Fetch error:', err); // DEBUG
       setError(err.message);
     } finally {
       setLoading(false);
@@ -340,13 +350,29 @@ export default function ProductsList() {
       setImagePreview(product.main_image ? getImageUrl(product.main_image) : null);
       try {
         const vr = await adminService.getProductVariants(product.id);
-        setColorsWithSizes(vr.success && vr.data ? normalizeVariants(vr.data) : []);
-        const ir = await adminService.getProductImages(product.id);
-        setExistingImages(ir.success && ir.data ? ir.data : []);
+        const normalizedColors = vr.success && vr.data ? normalizeVariants(vr.data) : [];
+        setColorsWithSizes(normalizedColors);
+
+        // Fetch images grouped by color
+        const ir = await adminService.getProductImagesByColor(product.id);
+        if (ir.success && ir.data) {
+          // Initialize color images
+          const colorImgsMap = {};
+          normalizedColors.forEach((color) => {
+            colorImgsMap[color.label] = {
+              existing: ir.data[color.label] || [],
+              new: []
+            };
+          });
+          setColorImages(colorImgsMap);
+        } else {
+          setColorImages({});
+        }
       } catch (err) {
         console.error(err);
         setColorsWithSizes([]);
         setExistingImages([]);
+        setColorImages({});
       }
     } else {
       setEditingProduct(null);
@@ -364,11 +390,8 @@ export default function ProductsList() {
       });
       setImagePreview(null);
       setColorsWithSizes([]);
-      setExistingImages([]);
     }
     setImageFile(null);
-    setAdditionalImages([]);
-    setImagesToDelete([]);
     setOpenDialog(true);
   };
 
@@ -376,9 +399,8 @@ export default function ProductsList() {
     setOpenDialog(false);
     setEditingProduct(null);
     setColorsWithSizes([]);
-    setAdditionalImages([]);
-    setExistingImages([]);
-    setImagesToDelete([]);
+    setColorImages({});
+    setColorImagesToDelete([]);
   };
 
   const handleInputChange = (e) => {
@@ -416,12 +438,44 @@ export default function ProductsList() {
     }
   };
 
-  const handleAddColor = () => setColorsWithSizes((p) => [...p, { label: 'New Color', hex: '#000000', sizes: [] }]);
-  const handleRemoveColor = (i) => setColorsWithSizes((p) => p.filter((_, idx) => idx !== i));
+  const handleAddColor = () => {
+    const newColor = { label: 'New Color', hex: '#000000', sizes: [] };
+    setColorsWithSizes((p) => [...p, newColor]);
+
+    // Initialize empty images for this color
+    setColorImages((prev) => ({
+      ...prev,
+      'New Color': { existing: [], new: [] }
+    }));
+  };
+  const handleRemoveColor = (i) => {
+    const oldLabel = colorsWithSizes[i].label;
+    setColorsWithSizes((p) => p.filter((_, idx) => idx !== i));
+
+    // Remove color images
+    setColorImages((prev) => {
+      const newState = { ...prev };
+      delete newState[oldLabel];
+      return newState;
+    });
+  };
   const handleColorFieldChange = (ci, field, val) => {
     const u = [...colorsWithSizes];
+    const oldLabel = u[ci].label;
+    const newLabel = field === 'label' ? val : u[ci].label;
+
     u[ci] = { ...u[ci], [field]: val };
     setColorsWithSizes(u);
+
+    // If label changed, update color images map
+    if (field === 'label' && oldLabel !== newLabel && colorImages[oldLabel]) {
+      setColorImages((prev) => {
+        const newState = { ...prev };
+        newState[newLabel] = newState[oldLabel];
+        delete newState[oldLabel];
+        return newState;
+      });
+    }
   };
   const handleAddSizeToColor = (ci) => {
     const u = [...colorsWithSizes];
@@ -440,40 +494,36 @@ export default function ProductsList() {
     setColorsWithSizes(u);
   };
 
-  const handleAdditionalImagesChange = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setCompressing(true);
-    const compressOne = async (file) => {
-      try {
-        const c = await imageCompression(file, compressionOptions);
-        return new Promise((res) => {
-          const r = new FileReader();
-          r.onloadend = () => res({ file: c, preview: r.result });
-          r.readAsDataURL(c);
-        });
-      } catch {
-        return new Promise((res) => {
-          const r = new FileReader();
-          r.onloadend = () => res({ file, preview: r.result });
-          r.readAsDataURL(file);
-        });
+  // Color image handlers
+  const handleAddColorImages = (colorLabel, newImages) => {
+    setColorImages((prev) => ({
+      ...prev,
+      [colorLabel]: {
+        ...prev[colorLabel],
+        new: [...(prev[colorLabel]?.new || []), ...newImages]
       }
-    };
-    try {
-      const results = await Promise.all(files.map(compressOne));
-      setAdditionalImages((p) => [...p, ...results]);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setCompressing(false);
-    }
+    }));
   };
 
-  const handleRemoveAdditionalImage = (i) => setAdditionalImages((p) => p.filter((_, idx) => idx !== i));
-  const handleDeleteExistingImage = (id) => {
-    setImagesToDelete((p) => [...p, id]);
-    setExistingImages((p) => p.filter((img) => img.id !== id));
+  const handleRemoveColorNewImage = (colorLabel, idx) => {
+    setColorImages((prev) => ({
+      ...prev,
+      [colorLabel]: {
+        ...prev[colorLabel],
+        new: prev[colorLabel].new.filter((_, i) => i !== idx)
+      }
+    }));
+  };
+
+  const handleDeleteColorExistingImage = (colorLabel, imageId) => {
+    setColorImagesToDelete((p) => [...p, imageId]);
+    setColorImages((prev) => ({
+      ...prev,
+      [colorLabel]: {
+        ...prev[colorLabel],
+        existing: prev[colorLabel].existing.filter((img) => img.id !== imageId)
+      }
+    }));
   };
 
   const handleSubmit = async () => {
@@ -513,10 +563,23 @@ export default function ProductsList() {
       );
 
       if (variants.length > 0) fd.append('variants', JSON.stringify(variants));
-      additionalImages.forEach((img) => {
-        if (img.file) fd.append('images[]', img.file);
+
+      // Add color-specific images
+      Object.keys(colorImages).forEach((colorLabel) => {
+        const colorImgs = colorImages[colorLabel];
+        if (colorImgs.new && colorImgs.new.length > 0) {
+          colorImgs.new.forEach((img) => {
+            if (img.file) {
+              fd.append(`color_images[${colorLabel}][]`, img.file);
+            }
+          });
+        }
       });
-      if (imagesToDelete.length > 0) fd.append('image_ids_to_delete', JSON.stringify(imagesToDelete));
+
+      // Add image IDs to delete
+      if (colorImagesToDelete.length > 0) {
+        fd.append('image_ids_to_delete', JSON.stringify(colorImagesToDelete));
+      }
 
       if (editingProduct) await adminService.updateProduct(editingProduct.id, fd);
       else await adminService.createProduct(fd);
@@ -847,6 +910,34 @@ export default function ProductsList() {
                       </Grid>
                     </Grid>
 
+                    {/* Color-specific images section */}
+                    <Accordion defaultExpanded={false} sx={{ mb: 2, bgcolor: '#f5f5f5' }}>
+                      <AccordionSummary expandIcon={<ArrowDown2 />}>
+                        <Typography variant="body2" fontWeight="bold">
+                          📸 صور اللون: {color.label}
+                          {colorImages[color.label] && (
+                            <Chip
+                              label={`${(colorImages[color.label]?.existing?.length || 0) + (colorImages[color.label]?.new?.length || 0)}`}
+                              size="small"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <ColorImagesUpload
+                          colorLabel={color.label}
+                          colorHex={color.hex}
+                          existingImages={colorImages[color.label]?.existing || []}
+                          newImages={colorImages[color.label]?.new || []}
+                          onAddImages={(imgs) => handleAddColorImages(color.label, imgs)}
+                          onRemoveNewImage={(idx) => handleRemoveColorNewImage(color.label, idx)}
+                          onDeleteExistingImage={(id) => handleDeleteColorExistingImage(color.label, id)}
+                          compressing={compressing}
+                        />
+                      </AccordionDetails>
+                    </Accordion>
+
                     {/* Sizes rows */}
                     {color.sizes?.length > 0 && (
                       <Box sx={{ pl: 2, borderLeft: '2px solid #1976d2' }}>
@@ -936,75 +1027,6 @@ export default function ProductsList() {
                   <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
                     No colors added. Click "Add Color" to get started.
                   </Typography>
-                )}
-              </Box>
-            </Grid>
-
-            {/* ── Additional Images ── */}
-            <Grid item xs={12}>
-              <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Additional Images
-                </Typography>
-                {existingImages.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                      Existing Images:
-                    </Typography>
-                    <Grid container spacing={2}>
-                      {existingImages.map((img) => (
-                        <Grid item xs={4} key={img.id}>
-                          <Box sx={{ position: 'relative' }}>
-                            <img
-                              src={getImageUrl(img.image_url)}
-                              alt="Product"
-                              style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
-                            />
-                            <IconButton
-                              size="small"
-                              color="error"
-                              sx={{ position: 'absolute', top: 0, right: 0 }}
-                              onClick={() => handleDeleteExistingImage(img.id)}
-                            >
-                              <CloseCircle />
-                            </IconButton>
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </Box>
-                )}
-                <Button variant="outlined" component="label" fullWidth startIcon={<Add />} sx={{ mb: 2 }} disabled={compressing}>
-                  {compressing ? 'جارٍ ضغط الصور...' : 'Upload Additional Images'}
-                  <input type="file" hidden accept="image/*" multiple onChange={handleAdditionalImagesChange} />
-                </Button>
-                {compressing && (
-                  <Typography variant="caption" color="primary" textAlign="center" display="block" sx={{ mb: 1 }}>
-                    ⏳ يتم ضغط الصور...
-                  </Typography>
-                )}
-                {additionalImages.length > 0 && (
-                  <Grid container spacing={2}>
-                    {additionalImages.map((img, i) => (
-                      <Grid item xs={4} key={i}>
-                        <Box sx={{ position: 'relative' }}>
-                          <img
-                            src={img.preview}
-                            alt="Preview"
-                            style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
-                          />
-                          <IconButton
-                            size="small"
-                            color="error"
-                            sx={{ position: 'absolute', top: 0, right: 0 }}
-                            onClick={() => handleRemoveAdditionalImage(i)}
-                          >
-                            <CloseCircle />
-                          </IconButton>
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
                 )}
               </Box>
             </Grid>

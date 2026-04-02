@@ -473,4 +473,42 @@ class ProductController
             return Response::error('Failed to fetch product: ' . $e->getMessage(), null, 500);
         }
     }
+
+    /**
+     * Get product images (grouped by color if specified)
+     * GET /products/{productId}/images?color=Red (optional color filter)
+     */
+    public function getProductImages(Request $request, $productId)
+    {
+        try {
+            $productId = (int)$productId;
+            $colorValue = $request->input('color', null);
+
+            // Check if product exists
+            $product = $this->productModel->find($productId);
+            if (!$product) {
+                return Response::notFound('Product not found');
+            }
+
+            $imageModel = new \App\Models\ProductImage();
+
+            // If specific color requested, return only images for that color or fallback to general
+            if ($colorValue) {
+                $colorImages = $imageModel->getColorImages($productId, $colorValue);
+
+                // If no images for color, fallback to general images
+                if (empty($colorImages)) {
+                    $colorImages = $imageModel->getGeneralImages($productId);
+                }
+
+                return Response::success(['images' => $colorImages, 'color' => $colorValue]);
+            }
+
+            // Otherwise return all images grouped by color
+            $imagesByColor = $imageModel->getImagesByColor($productId);
+            return Response::success($imagesByColor);
+        } catch (\Exception $e) {
+            return Response::error('Failed to fetch images: ' . $e->getMessage(), null, 500);
+        }
+    }
 }

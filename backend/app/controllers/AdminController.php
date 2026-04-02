@@ -963,15 +963,10 @@ class AdminController
      */
     private function handleProductImages($productId, Request $request)
     {
-        // Handle multiple image uploads
-        // PHP converts 'images[]' to 'images' in $_FILES, but keeps it as array
-        // Check for 'images' key in $_FILES
+        // Handle multiple general images (images[])
         if (isset($_FILES['images'])) {
-            // Handle array of files (when multiple files are uploaded)
             if (is_array($_FILES['images']['name'])) {
                 $imageCount = count($_FILES['images']['name']);
-
-                // Get current max sort_order
                 $existingImages = $this->imageModel->getByProductId($productId);
                 $maxSortOrder = 0;
                 foreach ($existingImages as $img) {
@@ -995,18 +990,16 @@ class AdminController
                             $imageData = [
                                 'product_id' => $productId,
                                 'image_url' => $uploadResult['path'],
+                                'color_value' => null,
                                 'sort_order' => $maxSortOrder + 1 + $i,
                             ];
                             $this->imageModel->create($imageData);
                         }
                     }
                 }
-            }
-            // Handle single file
-            else if ($_FILES['images']['error'] === UPLOAD_ERR_OK) {
+            } else if ($_FILES['images']['error'] === UPLOAD_ERR_OK) {
                 $uploadResult = FileUpload::uploadImage($_FILES['images'], 'products');
                 if ($uploadResult['success']) {
-                    // Get current max sort_order
                     $existingImages = $this->imageModel->getByProductId($productId);
                     $maxSortOrder = 0;
                     foreach ($existingImages as $img) {
@@ -1018,6 +1011,7 @@ class AdminController
                     $imageData = [
                         'product_id' => $productId,
                         'image_url' => $uploadResult['path'],
+                        'color_value' => null,
                         'sort_order' => $maxSortOrder + 1,
                     ];
                     $this->imageModel->create($imageData);
@@ -1025,7 +1019,56 @@ class AdminController
             }
         }
 
-        // Handle image deletion (if image_ids_to_delete is provided)
+        // Handle color-specific images (color_images[colorLabel][])
+        $colorImages = $_FILES['color_images'] ?? [];
+
+        if (!empty($colorImages['name'])) {
+            $existingImages = $this->imageModel->getByProductId($productId);
+            $maxSortOrder = 0;
+            foreach ($existingImages as $img) {
+                if ($img['sort_order'] > $maxSortOrder) {
+                    $maxSortOrder = $img['sort_order'];
+                }
+            }
+
+            // colorImages structure: ['name' => ['Red' => [], 'Blue' => []], ...]
+            if (is_array($colorImages['name'])) {
+                $sortOrder = $maxSortOrder;
+
+                foreach ($colorImages['name'] as $colorLabel => $files) {
+                    if (!is_array($files)) {
+                        $files = [$files];
+                    }
+
+                    $fileCount = count($files);
+                    for ($i = 0; $i < $fileCount; $i++) {
+                        if ($colorImages['error'][$colorLabel][$i] === UPLOAD_ERR_OK) {
+                            $file = [
+                                'name' => $colorImages['name'][$colorLabel][$i],
+                                'type' => $colorImages['type'][$colorLabel][$i],
+                                'tmp_name' => $colorImages['tmp_name'][$colorLabel][$i],
+                                'error' => $colorImages['error'][$colorLabel][$i],
+                                'size' => $colorImages['size'][$colorLabel][$i],
+                            ];
+
+                            $uploadResult = FileUpload::uploadImage($file, 'products');
+                            if ($uploadResult['success']) {
+                                $sortOrder++;
+                                $imageData = [
+                                    'product_id' => $productId,
+                                    'image_url' => $uploadResult['path'],
+                                    'color_value' => $colorLabel,
+                                    'sort_order' => $sortOrder,
+                                ];
+                                $this->imageModel->create($imageData);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle image deletion (image_ids_to_delete)
         $imageIdsToDelete = $request->input('image_ids_to_delete');
         if ($imageIdsToDelete) {
             $ids = is_array($imageIdsToDelete) ? $imageIdsToDelete : json_decode($imageIdsToDelete, true);
@@ -1116,6 +1159,19 @@ class AdminController
         try {
             $images = $this->imageModel->getByProductId($productId);
             return Response::success($images);
+        } catch (\Exception $e) {
+            return Response::error('Failed to fetch images: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Get product images grouped by color
+     */
+    public function getProductImagesByColor(Request $request, $productId)
+    {
+        try {
+            $imagesByColor = $this->imageModel->getImagesByColor($productId);
+            return Response::success($imagesByColor);
         } catch (\Exception $e) {
             return Response::error('Failed to fetch images: ' . $e->getMessage(), null, 500);
         }

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormattedMessage } from 'react-intl';
 
 import ProductCard from 'components/ProductCard';
 import { productsService } from 'api';
-import useAuth from 'hooks/useAuth';
 import { getImageUrl } from 'utils/imageHelper';
 
 import ProfileImg from 'assets/images/homepage/5.jpg';
@@ -20,7 +19,6 @@ import {
   Container,
   Grid,
   Typography,
-  MenuItem,
   Select,
   FormControl,
   Button,
@@ -32,7 +30,10 @@ import {
   FormControlLabel,
   Divider,
   Collapse,
-  IconButton
+  IconButton,
+  MenuItem,
+  InputLabel,
+  TextField
 } from '@mui/material';
 
 import TuneIcon from '@mui/icons-material/Tune';
@@ -41,23 +42,34 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 const FALLBACK_IMAGES = [Card1, Card2, Card3, Card4, Card5, Card6];
 const LIMIT = 20;
+const DEFAULT_MAX_PRICE = 5000;
 
-const sizeOptions = ['XS/S', 'S/M', 'M/L', 'L/XL', 'XL/2XL', '2XL/3XL', '45'];
+const SORT_OPTIONS = [
+  { value: 'created_at_DESC', label: 'Newest' },
+  { value: 'created_at_ASC', label: 'Oldest' },
+  { value: 'price_ASC', label: 'Price: Low to High' },
+  { value: 'price_DESC', label: 'Price: High to Low' },
+  { value: 'name_ASC', label: 'Name: A-Z' },
+  { value: 'name_DESC', label: 'Name: Z-A' }
+];
 
 export default function Collections() {
-  const { isLoggedIn } = useAuth();
-
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [allProductsMeta, setAllProductsMeta] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [priceRangeMax, setPriceRangeMax] = useState(DEFAULT_MAX_PRICE);
 
   const [filters, setFilters] = useState({
     category: 'all',
     minPrice: 0,
-    maxPrice: 600,
+    maxPrice: DEFAULT_MAX_PRICE,
+    brand: '',
     page: 1,
-    sort: 'featured'
+    sort: 'created_at_DESC'
   });
 
   const [totalPages, setTotalPages] = useState(1);
@@ -65,6 +77,7 @@ export default function Collections() {
   const [openSections, setOpenSections] = useState({
     price: true,
     category: true,
+    brand: true
   });
 
   const categoryMap = useMemo(() => {
@@ -75,67 +88,144 @@ export default function Collections() {
     return map;
   }, [categories]);
 
-  const buildParams = () => {
+  const availableBrands = useMemo(() => {
+    const brands = new Set();
+
+    allProductsMeta.forEach((product) => {
+      if (product?.brand && String(product.brand).trim()) {
+        brands.add(String(product.brand).trim());
+      }
+    });
+
+    return Array.from(brands).sort((a, b) => a.localeCompare(b));
+  }, [allProductsMeta]);
+
+  const parseSortValue = (sortValue) => {
+    const value = String(sortValue || 'created_at_DESC');
+    const lastUnderscoreIndex = value.lastIndexOf('_');
+
+    if (lastUnderscoreIndex === -1) {
+      return {
+        sort: 'created_at',
+        order: 'DESC'
+      };
+    }
+
+    const sort = value.slice(0, lastUnderscoreIndex) || 'created_at';
+    const order = value.slice(lastUnderscoreIndex + 1) || 'DESC';
+
+    return { sort, order };
+  };
+
+  const normalizeProducts = useCallback(
+    (data) => {
+      const array = data?.products || data?.data || (Array.isArray(data) ? data : []);
+
+      return array.map((product, index) => {
+        const category = categoryMap[product.category_id];
+        const categoryName = category?.name?.toLowerCase() || 'other';
+
+        const image = product.main_image ? getImageUrl(product.main_image) : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length];
+
+        return {
+          id: String(product.id),
+          name: product.name,
+          name_ar: product.name_ar,
+          price: Number(product.price) || 0,
+          sale_price: product.sale_price || null,
+          image,
+          category: categoryName,
+          category_id: product.category_id,
+          description: product.description || product.description_ar || '',
+          slug: product.slug,
+          main_image: product.main_image,
+          stock_quantity: product.stock_quantity,
+          brand: product.brand || '',
+          images: product.images || [],
+          variants: product.variants || { size: [], color: [], combination: [] },
+          reviews: product.reviews || { average_rating: 0, total_reviews: 0 }
+        };
+      });
+    },
+    [categoryMap]
+  );
+
+  const buildParams = useCallback(() => {
+    const { sort, order } = parseSortValue(filters.sort);
+
     const params = {
       page: filters.page,
       limit: LIMIT,
       min_price: filters.minPrice,
-      max_price: filters.maxPrice
+      max_price: filters.maxPrice,
+      sort,
+      order
     };
 
     if (filters.category !== 'all') {
       const selected = categories.find((c) => c.slug === filters.category);
-      if (selected) params.category_id = selected.id;
+      if (selected) {
+        params.category_id = selected.id;
+      }
     }
 
-    if (filters.sort && filters.sort !== 'featured') {
-      params.sort = filters.sort;
+    if (filters.brand && filters.brand.trim()) {
+      params.brand = filters.brand.trim();
     }
 
     return params;
-  };
+  }, [filters, categories]);
 
-  const normalizeProducts = (data) => {
-    const array = data?.products || data?.data || (Array.isArray(data) ? data : []);
+  const fetchCategories = useCallback(async () => {
+    try {
+      setCategoriesLoading(true);
+      const res = await productsService.getCategories();
 
-    return array.map((product, index) => {
-      const category = categoryMap[product.category_id];
-      const categoryName = category?.name?.toLowerCase() || 'other';
+      if (res?.success) {
+        setCategories(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
 
-      const image = product.main_image ? getImageUrl(product.main_image) : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length];
+  const fetchAllProductsMeta = useCallback(async () => {
+    try {
+      const res = await productsService.getProducts({
+        page: 1,
+        limit: 1000
+      });
 
-      return {
-        id: String(product.id),
-        name: product.name,
-        name_ar: product.name_ar,
-        price: Number(product.price) || 0,
-        sale_price: product.sale_price || null,
-        image,
-        category: categoryName,
-        category_id: product.category_id,
-        description: product.description || product.description_ar || '',
-        slug: product.slug,
-        main_image: product.main_image,
-        stock_quantity: product.stock_quantity,
-        images: product.images || [],
-        variants: product.variants || { size: [], color: [], combination: [] },
-        reviews: product.reviews || { average_rating: 0, total_reviews: 0 }
-      };
-    });
-  };
+      if (res?.success) {
+        const sourceProducts = res?.data?.products || [];
+        setAllProductsMeta(sourceProducts);
+
+        const prices = sourceProducts.map((p) => Number(p.price) || 0).filter((p) => p > 0);
+
+        const highestPrice = prices.length ? Math.max(...prices) : DEFAULT_MAX_PRICE;
+        const normalizedMax = Math.max(DEFAULT_MAX_PRICE, Math.ceil(highestPrice / 100) * 100);
+
+        setPriceRangeMax(normalizedMax);
+
+        setFilters((prev) => ({
+          ...prev,
+          maxPrice: prev.maxPrice === DEFAULT_MAX_PRICE || prev.maxPrice > normalizedMax ? normalizedMax : prev.maxPrice
+        }));
+      } else {
+        setPriceRangeMax(DEFAULT_MAX_PRICE);
+      }
+    } catch (err) {
+      console.error('Failed to fetch product meta:', err);
+      setPriceRangeMax(DEFAULT_MAX_PRICE);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await productsService.getCategories();
-        if (res.success) setCategories(res.data || []);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
     fetchCategories();
-  }, []);
+    fetchAllProductsMeta();
+  }, [fetchCategories, fetchAllProductsMeta]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -145,25 +235,26 @@ export default function Collections() {
       try {
         const res = await productsService.getProducts(buildParams());
 
-        if (!res.success) {
-          throw new Error(res.message || 'Failed to load products');
+        if (!res?.success) {
+          throw new Error(res?.message || 'Failed to load products');
         }
 
-        let normalized = normalizeProducts(res.data);
+        const normalized = normalizeProducts(res.data);
 
-   
         setProducts(normalized);
-        setTotalPages(res.data?.pagination?.pages || 1);
+        setTotalPages(res?.data?.pagination?.pages || 1);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || 'Failed to load products');
         setProducts([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
-  }, [filters, categories]);
+    if (!categoriesLoading) {
+      fetchProducts();
+    }
+  }, [filters, categoriesLoading, buildParams, normalizeProducts]);
 
   const toggleSection = (key) => {
     setOpenSections((prev) => ({
@@ -172,16 +263,14 @@ export default function Collections() {
     }));
   };
 
-
-
   const clearFilters = () => {
     setFilters({
       category: 'all',
       minPrice: 0,
-      maxPrice: 600,
-      selectedSizes: [],
+      maxPrice: priceRangeMax,
+      brand: '',
       page: 1,
-      sort: 'featured'
+      sort: 'created_at_DESC'
     });
   };
 
@@ -214,7 +303,6 @@ export default function Collections() {
 
   return (
     <Box sx={{ bgcolor: '#fff', minHeight: '100vh' }}>
-      {/* HERO */}
       <Box
         sx={{
           backgroundImage: `url(${ProfileImg})`,
@@ -247,7 +335,6 @@ export default function Collections() {
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Grid container spacing={4}>
-          {/* LEFT FILTER SIDEBAR */}
           <Grid item xs={12} md={3} lg={2.5}>
             <Box
               sx={{
@@ -268,7 +355,6 @@ export default function Collections() {
                 <Typography sx={{ fontWeight: 700, fontSize: '1.1rem' }}>Filters</Typography>
               </Box>
 
-              {/* PRICE */}
               <Box sx={{ mb: 3 }}>
                 {sidebarSectionHeader('Price', 'price')}
 
@@ -277,9 +363,11 @@ export default function Collections() {
                     <Slider
                       value={[filters.minPrice, filters.maxPrice]}
                       min={0}
-                      max={600}
-                      step={10}
+                      max={priceRangeMax}
+                      step={50}
                       onChange={(_, value) => {
+                        if (!Array.isArray(value)) return;
+
                         setFilters((prev) => ({
                           ...prev,
                           minPrice: value[0],
@@ -342,7 +430,6 @@ export default function Collections() {
 
               <Divider sx={{ mb: 3 }} />
 
-              {/* PRODUCT TYPE */}
               <Box sx={{ mb: 3 }}>
                 {sidebarSectionHeader('Product type', 'category')}
 
@@ -381,7 +468,7 @@ export default function Collections() {
                             sx={{ color: '#cfcfcf' }}
                           />
                         }
-                        label={`${cat.name}`}
+                        label={cat.name}
                       />
                     ))}
                   </Stack>
@@ -390,7 +477,51 @@ export default function Collections() {
 
               <Divider sx={{ mb: 3 }} />
 
-      
+              <Box sx={{ mb: 3 }}>
+                {sidebarSectionHeader('Brand', 'brand')}
+
+                <Collapse in={openSections.brand}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Type brand name"
+                    value={filters.brand}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        brand: e.target.value,
+                        page: 1
+                      }))
+                    }
+                  />
+
+                  {availableBrands.length > 0 && (
+                    <Stack spacing={1} mt={2}>
+                      {availableBrands.slice(0, 10).map((brand) => (
+                        <FormControlLabel
+                          key={brand}
+                          control={
+                            <Checkbox
+                              checked={filters.brand === brand}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  brand: prev.brand === brand ? '' : brand,
+                                  page: 1
+                                }))
+                              }
+                              sx={{ color: '#cfcfcf' }}
+                            />
+                          }
+                          label={brand}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Collapse>
+              </Box>
+
+              <Divider sx={{ mb: 3 }} />
 
               <Button
                 fullWidth
@@ -414,14 +545,12 @@ export default function Collections() {
             </Box>
           </Grid>
 
-          {/* RIGHT CONTENT */}
           <Grid item xs={12} md={9} lg={9.5}>
-            {/* Top bar */}
             <Box
               sx={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: { xs: 'stretch', md: 'center' },
                 mb: 3,
                 gap: 2,
                 flexWrap: 'wrap'
@@ -429,41 +558,57 @@ export default function Collections() {
             >
               <Typography sx={{ color: '#444', fontWeight: 500 }}>{!loading ? `${products.length} products` : 'Loading...'}</Typography>
 
-       
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel id="sort-label">Sort by</InputLabel>
+                <Select
+                  labelId="sort-label"
+                  label="Sort by"
+                  value={filters.sort}
+                  onChange={(e) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      sort: e.target.value,
+                      page: 1
+                    }))
+                  }
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
 
-            {/* LOADING */}
             {loading && (
               <Box display="flex" justifyContent="center" py={10}>
                 <CircularProgress sx={{ color: '#111' }} />
               </Box>
             )}
 
-            {/* ERROR */}
             {!loading && error && (
               <Box textAlign="center" py={8}>
                 <Typography color="error">{error}</Typography>
 
                 <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-                  <FormattedMessage id="try-again" />
+                  <FormattedMessage id="try-again" defaultMessage="Try Again" />
                 </Button>
               </Box>
             )}
 
-            {/* EMPTY */}
             {!loading && !error && products.length === 0 && (
               <Box textAlign="center" py={10}>
                 <Typography variant="h6">
-                  <FormattedMessage id="no-products" />
+                  <FormattedMessage id="no-products" defaultMessage="No products found" />
                 </Typography>
 
                 <Typography color="text.secondary">
-                  <FormattedMessage id="adjust-filters" />
+                  <FormattedMessage id="adjust-filters" defaultMessage="Try adjusting your filters to find what you're looking for." />
                 </Typography>
               </Box>
             )}
 
-            {/* PRODUCTS */}
             {!loading && !error && products.length > 0 && (
               <Grid container spacing={3}>
                 {products.map((p) => (
@@ -474,7 +619,6 @@ export default function Collections() {
               </Grid>
             )}
 
-            {/* PAGINATION */}
             {!loading && products.length > 0 && totalPages > 1 && (
               <Box display="flex" justifyContent="center" mt={5}>
                 <Pagination

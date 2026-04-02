@@ -20,32 +20,11 @@ import SEO from 'components/SEO';
 // Styles
 import './productDetails.css';
 import ImageZoom from '../../../../components/ImageZoom';
+import ReviewsSection from './components/Reviews/ReviewsSection';
+import ProductInfo from './components/ProductInfo';
+import ProductGallery from './components/ProductGallery';
 
 // ==================== Helper Functions ====================
-
-const getAllImages = (product) => {
-  if (!product) return [];
-
-  const images = [];
-
-  if (product.main_image) {
-    images.push({
-      url: getImageUrl(product.main_image),
-      isMain: true
-    });
-  }
-
-  if (product.images && Array.isArray(product.images)) {
-    product.images.forEach((img) => {
-      images.push({
-        url: getImageUrl(img.image_url),
-        isMain: false
-      });
-    });
-  }
-
-  return images;
-};
 
 const getStockFromCombination = (product, sizeValue, colorValue) => {
   if (!product?.variants?.combination) return 0;
@@ -75,7 +54,6 @@ const getAvailableColorsForSize = (sizeValue, product) => {
   return allColors.filter((color) => availableColorValues.has(color.value));
 };
 
-// New: get available sizes for a selected color
 const getAvailableSizesForColor = (colorValue, product) => {
   if (!colorValue || !product?.variants?.combination) {
     return product?.variants?.size || [];
@@ -96,6 +74,33 @@ const getAvailableSizesForColor = (colorValue, product) => {
   return allSizes.filter((size) => availableSizeValues.has(size.value));
 };
 
+const getAllImages = (product) => {
+  if (!product?.images || product.images.length === 0) return [];
+
+  return product.images.map((img) => ({
+    id: img.id,
+    url: getImageUrl(img.image_url),
+    isMain: false,
+    color_value: img.color_value || null
+  }));
+};
+
+// Returns images filtered by color_value from the already-loaded product.images
+// Falls back to all images if no color-specific images found
+const getImagesByColor = (product, colorValue) => {
+  if (!colorValue || !product?.images) return getAllImages(product);
+
+  const filtered = product.images.filter((img) => img.color_value === colorValue);
+
+  const imgs = filtered.map((img) => ({
+    id: img.id,
+    url: getImageUrl(img.image_url),
+    isMain: false,
+    color_value: img.color_value || null
+  }));
+
+  return imgs.length > 0 ? imgs : getAllImages(product);
+};
 // ==================== Main Component ====================
 
 export default function ProductDetails() {
@@ -111,6 +116,7 @@ export default function ProductDetails() {
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [displayImages, setDisplayImages] = useState([]);
   const [qty, setQty] = useState(1);
   const [addedMsg, setAddedMsg] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
@@ -164,7 +170,6 @@ export default function ProductDetails() {
   // ==================== Variant Initialization ====================
 
   const initializeDefaultVariants = (productData) => {
-    // Color-first flow: choose first available color, then select first size for that color
     if (productData.variants?.color && productData.variants.color.length > 0) {
       const firstColor = productData.variants.color[0];
       setSelectedColor(firstColor);
@@ -176,10 +181,17 @@ export default function ProductDetails() {
       } else {
         setSelectedSize(null);
       }
+
+      // Use images already embedded in product data — no extra API call needed
+      setDisplayImages(getImagesByColor(productData, firstColor.value));
     } else if (productData.variants?.size && productData.variants.size.length > 0) {
-      // Fallback if only sizes exist (no colors)
+      // Fallback: only sizes, no colors
       const firstSize = productData.variants.size[0];
       setSelectedSize(firstSize.value);
+      setDisplayImages(getAllImages(productData));
+    } else {
+      // No variants — show all images
+      setDisplayImages(getAllImages(productData));
     }
   };
 
@@ -267,12 +279,11 @@ export default function ProductDetails() {
     setSelectedSize(sizeValue);
     setSelectedImageIndex(0);
 
-    // When user changes size (secondary), ensure selectedColor still valid
+    // When user changes size (secondary), ensure selectedColor is still valid
     if (selectedColor) {
       const combinations = product.variants?.combination || [];
       const matching = combinations.find((c) => c.size_value === sizeValue && c.color_value === selectedColor.value);
       if (!matching) {
-        // prefer keeping selected color only if some combo exists for that size
         const availableColors = getAvailableColorsForSize(sizeValue, product);
         setSelectedColor(availableColors.length > 0 ? availableColors[0] : null);
       }
@@ -285,7 +296,10 @@ export default function ProductDetails() {
     setSelectedColor(color);
     setSelectedImageIndex(0);
 
-    // When color changes, attempt to pick a default size for that color
+    // Filter images from already-loaded product.images by color_value — no API call needed
+    setDisplayImages(getImagesByColor(product, color.value));
+
+    // Pick a default size for this color
     const availableSizes = getAvailableSizesForColor(color.value, product);
     if (availableSizes.length > 0) {
       setSelectedSize(availableSizes[0].value);
@@ -316,7 +330,6 @@ export default function ProductDetails() {
     const hasSizeVariants = product.variants?.size && product.variants.size.length > 0;
     const hasColorVariants = product.variants?.color && product.variants.color.length > 0;
 
-    // Validate selections
     if (hasSizeVariants && !selectedSize) {
       openSnackbar({
         open: true,
@@ -387,7 +400,6 @@ export default function ProductDetails() {
 
     const combinations = product.variants?.combination || [];
 
-    // New: prefer color primary then size
     if (selectedColor && selectedSize && hasSizeVariants && hasColorVariants) {
       const combinationVariant = combinations.find(
         (combo) => combo.size_value === selectedSize && combo.color_value === selectedColor.value
@@ -413,7 +425,6 @@ export default function ProductDetails() {
         variantId = sizeVariant.id;
         variantData.size_value = selectedSize;
       } else {
-        // fallback: try find a combo that matches the selected color only
         const comboForColor = combinations.find((c) => c.color_value === selectedColor.value);
         if (comboForColor) {
           variantId = comboForColor.id;
@@ -439,10 +450,8 @@ export default function ProductDetails() {
         name: product.name,
         price: product.price,
         sale_price: product.sale_price,
-        main_image: product.main_image,
         size_value: variantData.size_value,
         color_value: variantData.color_value,
-        // Color / Size format (color is primary)
         variant_name:
           variantData.color_value && variantData.size_value
             ? `${variantData.color_value} / ${variantData.size_value}`
@@ -524,7 +533,6 @@ export default function ProductDetails() {
       }
 
       if (selectedColor && !hasSizeVariants) {
-        // sum stock for all combos matching color
         const sum = combinations.reduce((acc, c) => {
           if (c.color_value === selectedColor.value) return acc + (parseInt(c.stock_quantity, 10) || 0);
           return acc;
@@ -567,7 +575,9 @@ export default function ProductDetails() {
     );
   }
 
-  const images = getAllImages(product);
+  // Use displayImages if populated, otherwise fall back to all product images
+  const allImages = getAllImages(product);
+  const mainImages = displayImages.length > 0 ? displayImages : allImages;
   const sizes = product.variants?.size || [];
   const colors = product.variants?.color || [];
   const availableColorsForSelectedSize = selectedSize ? getAvailableColorsForSize(selectedSize, product) : [];
@@ -577,7 +587,7 @@ export default function ProductDetails() {
     '@type': 'Product',
     name: product.name,
     description: product.description || `${product.name} - Premium modest sportswear from ESC Wear`,
-    image: images.length > 0 ? images[0].url : `${window.location.origin}/assets/ESC-Icon-Black-Trans.png`,
+    image: mainImages.length > 0 ? mainImages[0].url : `${window.location.origin}/assets/ESC-Icon-Black-Trans.png`,
     brand: {
       '@type': 'Brand',
       name: 'ESC Wear'
@@ -614,7 +624,7 @@ export default function ProductDetails() {
           `${product.name} - Premium modest sportswear from ESC Wear. High-quality athletic wear designed for comfort and style.`
         }
         keywords={`${product.name}, modest sportswear, athletic wear, ESC Wear, ${product.category?.name || 'sportswear'}`}
-        image={images.length > 0 ? images[0].url : '/assets/ESC-Icon-Black-Trans.png'}
+        image={mainImages.length > 0 ? mainImages[0].url : '/assets/ESC-Icon-Black-Trans.png'}
         url={`${window.location.origin}/products/${product.id}`}
         type="product"
         structuredData={productStructuredData}
@@ -631,12 +641,13 @@ export default function ProductDetails() {
           <div className="product-details-grid">
             {/* Gallery Section */}
             <ProductGallery
-              images={images}
+              allImages={allImages}
+              mainImages={mainImages}
               productName={product.name}
               selectedImageIndex={selectedImageIndex}
               onImageSelect={setSelectedImageIndex}
+              selectedColor={selectedColor?.value || ''}
             />
-
             {/* Details Section */}
             <ProductInfo
               product={product}
@@ -680,446 +691,3 @@ export default function ProductDetails() {
 }
 
 // ==================== Sub Components ====================
-
-function ProductGallery({ images, productName, selectedImageIndex, onImageSelect }) {
-  return (
-    <div className="gallery">
-      <div className="gallery-layout">
-        {images.length > 1 && (
-          <div className="gallery-thumbs vertical">
-            {images.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => onImageSelect(idx)}
-                className={`thumb-btn ${idx === selectedImageIndex ? 'active' : ''}`}
-                aria-label={`View image ${idx + 1}`}
-              >
-                <img src={img.url} alt={`${productName} thumb ${idx + 1}`} />
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="gallery-main">
-          {images.length > 0 ? (
-            <ImageZoom src={images[selectedImageIndex]?.url || images[0]?.url} alt={productName} />
-          ) : (
-            <div className="no-image">No image available</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductInfo({
-  product,
-  reviewStats,
-  sizes,
-  colors,
-  selectedSize,
-  selectedColor,
-  availableColorsForSelectedSize,
-  qty,
-  addingToCart,
-  addedMsg,
-  onSizeChange,
-  onColorChange,
-  onQtyChange,
-  onAddToCart,
-  getCurrentStock,
-  getStockFromCombination,
-  getAvailableColorsForSize,
-  getAvailableSizesForColor
-}) {
-  const currentStock = getCurrentStock();
-
-  return (
-    <aside className="details-column">
-      <h1>{product.name}</h1>
-
-      <div className="price-row">
-        <div className="price">{product.price} EGP</div>
-        {currentStock > 0 ? <div className="stock stock-in">In stock </div> : <div className="stock stock-out">Out of stock</div>}
-      </div>
-
-      {reviewStats && <RatingDisplay reviewStats={reviewStats} />}
-
-      {/* Color Selection (primary - show all available colors first) */}
-      {colors.length > 0 && (
-        <ColorSelector
-          selectedColor={selectedColor}
-          colors={colors}
-          onColorChange={onColorChange}
-          getAvailableSizesForColor={getAvailableSizesForColor}
-          getStockFromCombination={getStockFromCombination}
-          product={product}
-        />
-      )}
-
-      {/* Size Selection (secondary - show only sizes for selected color) */}
-      {sizes.length > 0 && selectedColor && (
-        <SizeSelector
-          sizes={getAvailableSizesForColor(selectedColor.value, product)}
-          selectedSize={selectedSize}
-          selectedColor={selectedColor}
-          onSizeChange={onSizeChange}
-          getStockFromCombination={getStockFromCombination}
-        />
-      )}
-
-      {/* Quantity */}
-      <div className="qty-cta">
-        <div className="qty">
-          <button type="button" onClick={() => onQtyChange(-1)}>
-            −
-          </button>
-          <div className="qty-value">{qty}</div>
-          <button type="button" onClick={() => onQtyChange(1)}>
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Add to Cart Button */}
-      <button
-        className="buy-now-btn"
-        onClick={onAddToCart}
-        disabled={addingToCart || currentStock === 0 || (sizes.length > 0 && !selectedSize) || (colors.length > 0 && !selectedColor)}
-      >
-        <FormattedMessage id="add-to-cart" defaultMessage="BUY IT NOW" />
-      </button>
-
-      {addedMsg && <div className="added-msg">{addedMsg}</div>}
-
-      {/* Product Details */}
-      {product.description && (
-        <div className="details-accordion">
-          <p>{product.description}</p>
-        </div>
-      )}
-    </aside>
-  );
-}
-
-function RatingDisplay({ reviewStats }) {
-  return (
-    <div className="rating-row">
-      <div className="stars">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            size="18"
-            variant={star <= Math.round(reviewStats.average_rating || 0) ? 'Bold' : 'Outline'}
-            color={star <= Math.round(reviewStats.average_rating || 0) ? '#ffc107' : '#ddd'}
-          />
-        ))}
-      </div>
-      <span className="rating-text">
-        {parseFloat(reviewStats.average_rating || 0).toFixed(1)} • {reviewStats.total_reviews || 0}{' '}
-        {reviewStats.total_reviews === 1 ? <FormattedMessage id="review" /> : <FormattedMessage id="reviews" />}
-      </span>
-    </div>
-  );
-}
-
-function SizeSelector({ sizes, selectedSize, selectedColor, onSizeChange, getStockFromCombination }) {
-  if (!selectedColor) {
-    return null;
-  }
-
-  return (
-    <div className="block" style={{ marginBottom: '1.5rem' }}>
-      <div className="block-label">
-        <FormattedMessage id="size" /> <span className="required">*</span>
-        {selectedSize && <span style={{ fontWeight: 400, marginLeft: '0.5rem', color: '#666' }}>{selectedSize}</span>}
-      </div>
-
-      {sizes.length === 0 ? (
-        <div style={{ color: '#ff9800', fontSize: '0.9rem', padding: '0.5rem', backgroundColor: '#fff3e0', borderRadius: '4px' }}>
-          <FormattedMessage id="no-sizes-available" />
-           
-        </div>
-      ) : (
-        <div className="sizes-row">
-          {sizes.map((size) => {
-            const isSelected = selectedSize === size.value;
-            const stockCount = getStockFromCombination(size.value, selectedColor.value);
-            const isAvailable = stockCount > 0;
-
-            return (
-              <button
-                key={size.id}
-                onClick={() => isAvailable && onSizeChange(size.value)}
-                className={`size-option ${isSelected ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
-                title={`${size.value}${isAvailable ? ` - ${stockCount} متوفر` : ' - غير متوفر'}`}
-                disabled={!isAvailable}
-                style={{
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '6px',
-                  border: isSelected ? '2px solid #1976d2' : '1px solid #ccc',
-                  backgroundColor: isSelected ? '#e3f2fd' : '#fff',
-                  cursor: isAvailable ? 'pointer' : 'not-allowed',
-                  opacity: isAvailable ? 1 : 0.5,
-                  fontWeight: isSelected ? 600 : 400,
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <span>{size.value}</span>
-                {!isAvailable && <span style={{ fontSize: '0.75rem', marginLeft: '4px', color: '#999' }}>(غير متوفر)</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ColorSelector({ selectedColor, colors, onColorChange, getAvailableSizesForColor, getStockFromCombination, product }) {
-  return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <div style={{ fontWeight: 600, marginBottom: '0.8rem' }}>
-        <FormattedMessage id="color" /> <span style={{ color: '#d32f2f' }}>*</span>:
-        {selectedColor && <span style={{ fontWeight: 400, marginLeft: '0.5rem', color: '#666' }}>{selectedColor.value}</span>}
-      </div>
-
-      {colors.length === 0 ? (
-        <div style={{ color: '#f44336', fontSize: '0.9rem', padding: '0.5rem' }}>لا توجد ألوان متاحة</div>
-      ) : (
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {colors.map((color) => {
-            const bg = color?.hex || color?.value || '#000000';
-            const isSelected = selectedColor?.id === color.id;
-
-            // Check if this color has any available sizes
-            const availableSizes = getAvailableSizesForColor(color.value, product);
-            const hasStock = availableSizes.length > 0;
-
-            return (
-              <button
-                key={color.id}
-                onClick={() => onColorChange(color)}
-                className={`color-pill ${isSelected ? 'selected' : ''} ${!hasStock ? 'out-of-stock' : ''}`}
-                aria-label={color.value}
-                title={`${color.value}${hasStock ? ` - ${availableSizes.length} أحجام متاحة` : ' - غير متوفر'}`}
-                disabled={!hasStock}
-                style={{
-                  padding: '0.6rem 1rem',
-                  borderRadius: '20px',
-                  border: isSelected ? '2px solid #1976d2' : '1px solid #ccc',
-                  backgroundColor: isSelected ? '#e3f2fd' : '#fff',
-                  cursor: hasStock ? 'pointer' : 'not-allowed',
-                  opacity: hasStock ? 1 : 0.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    background: bg,
-                    boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)',
-                    border: isSelected ? '2px solid #1976d2' : 'none'
-                  }}
-                />
-                <span style={{ fontSize: '0.95rem' }}>{color.value}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ReviewsSection({
-  reviews,
-  reviewStats,
-  loadingReviews,
-  isLoggedIn,
-  showReviewForm,
-  reviewForm,
-  submittingReview,
-  onShowReviewForm,
-  onReviewFormChange,
-  onSubmitReview
-}) {
-  const intl = useIntl();
-
-  return (
-    <div className="product-reviews">
-      <div className="product-reviews-inner">
-        <h2 className="reviews-title">
-          <Star1 size="24" />
-          <FormattedMessage id="reviews-ratings" />
-        </h2>
-
-        {reviewStats && (
-          <div className="reviews-summary">
-            <div className="summary-score">
-              <div className="score-value">{parseFloat(reviewStats.average_rating || 0).toFixed(1)}</div>
-              <div className="stars">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    size="20"
-                    variant={star <= Math.round(reviewStats.average_rating || 0) ? 'Bold' : 'Outline'}
-                    color={star <= Math.round(reviewStats.average_rating || 0) ? '#ffc107' : '#ddd'}
-                  />
-                ))}
-              </div>
-              <div className="summary-text">
-                {reviewStats.total_reviews || 0}{' '}
-                {reviewStats.total_reviews === 1 ? <FormattedMessage id="review" /> : <FormattedMessage id="reviews" />}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isLoggedIn && (
-          <div className="add-review-block">
-            {!showReviewForm ? (
-              <button className="write-review-btn" onClick={() => onShowReviewForm(true)}>
-                <DocumentText size="20" />
-                <FormattedMessage id="write-a-review" />
-              </button>
-            ) : (
-              <ReviewForm
-                reviewForm={reviewForm}
-                submittingReview={submittingReview}
-                onReviewFormChange={onReviewFormChange}
-                onSubmitReview={onSubmitReview}
-                onCancel={() => {
-                  onShowReviewForm(false);
-                  onReviewFormChange({ rating: 5, title: '', comment: '' });
-                }}
-              />
-            )}
-          </div>
-        )}
-
-        {loadingReviews ? (
-          <div className="center padding">
-            <FormattedMessage id="loading-reviews" />
-          </div>
-        ) : reviews.length === 0 ? (
-          <div className="center padding text-muted">
-            <p>
-              <FormattedMessage id="no-reviews-yet" />
-            </p>
-          </div>
-        ) : (
-          <ReviewsList reviews={reviews} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ReviewForm({ reviewForm, submittingReview, onReviewFormChange, onSubmitReview, onCancel }) {
-  const intl = useIntl();
-
-  return (
-    <form className="review-form" onSubmit={onSubmitReview}>
-      <h3>
-        <FormattedMessage id="write-your-review" />
-      </h3>
-
-      <div className="form-group">
-        <label>
-          <FormattedMessage id="rating" /> *
-        </label>
-        <div className="rating-input">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button key={star} type="button" onClick={() => onReviewFormChange({ ...reviewForm, rating: star })}>
-              <Star
-                size="32"
-                variant={star <= reviewForm.rating ? 'Bold' : 'Outline'}
-                color={star <= reviewForm.rating ? '#ffc107' : '#ddd'}
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="form-group">
-        <label>
-          <FormattedMessage id="title-optional" />
-        </label>
-        <input
-          type="text"
-          value={reviewForm.title}
-          onChange={(e) => onReviewFormChange({ ...reviewForm, title: e.target.value })}
-          placeholder={intl.formatMessage({ id: 'review-title' })}
-        />
-      </div>
-
-      <div className="form-group">
-        <label>
-          <FormattedMessage id="comment" /> *
-        </label>
-        <textarea
-          rows={5}
-          required
-          minLength={10}
-          value={reviewForm.comment}
-          onChange={(e) => onReviewFormChange({ ...reviewForm, comment: e.target.value })}
-          placeholder={intl.formatMessage({ id: 'write-review-here' })}
-        />
-      </div>
-
-      <div className="form-actions">
-        <button type="submit" disabled={submittingReview} className="submit-review-btn">
-          {submittingReview ? <FormattedMessage id="submitting" /> : <FormattedMessage id="submit-review" />}
-        </button>
-        <button type="button" className="cancel-review-btn" onClick={onCancel}>
-          <FormattedMessage id="cancel" />
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function ReviewsList({ reviews }) {
-  return (
-    <div className="reviews-list">
-      {reviews.map((review) => (
-        <div className="review-card" key={review.id}>
-          <div className="review-header">
-            <div>
-              <div className="review-name">
-                {review.first_name} {review.last_name}
-              </div>
-              <div className="stars small">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    size="16"
-                    variant={star <= review.rating ? 'Bold' : 'Outline'}
-                    color={star <= review.rating ? '#ffc107' : '#ddd'}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="review-date">{new Date(review.created_at).toLocaleDateString()}</div>
-          </div>
-
-          {review.title && <h4 className="review-title">{review.title}</h4>}
-          <p className="review-comment">{review.comment}</p>
-
-          {review.is_verified_purchase && (
-            <div className="verified-pill">
-              ✓ <FormattedMessage id="verified-purchase" />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}

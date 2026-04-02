@@ -48,6 +48,7 @@ $router->get('/products/category/{categorySlug}', ProductController::class, 'byC
 $router->get('/products/reviews/recent', ProductController::class, 'recentReviews');
 $router->get('/products/{productId}/related', ProductController::class, 'related');
 $router->get('/products/{productId}/reviews', ProductController::class, 'reviews');
+$router->get('/products/{productId}/images', ProductController::class, 'getProductImages');
 $router->get('/products/{productId}/stock', ProductController::class, 'checkStock');
 
 // Contact (Public)
@@ -144,6 +145,7 @@ $router->delete('/admin/products/{productId}/variants/{variantId}', AdminControl
 
 // Product Images Management
 $router->get('/admin/products/{productId}/images', AdminController::class, 'getProductImages', [AdminMiddleware::class]);
+$router->get('/admin/products/{productId}/images/grouped', AdminController::class, 'getProductImagesByColor', [AdminMiddleware::class]);
 $router->delete('/admin/products/{productId}/images/{imageId}', AdminController::class, 'deleteProductImage', [AdminMiddleware::class]);
 
 // Category Management

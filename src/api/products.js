@@ -67,6 +67,14 @@ export const productsService = {
     return response.data;
   },
 
+  // Get product images (optionally filtered by color)
+  getImages: async (productId, colorValue = null) => {
+    const response = await axios.get(`/api/products/${productId}/images`, {
+      params: colorValue ? { color: colorValue } : {}
+    });
+    return response.data;
+  },
+
   // Get recent reviews (for homepage)
   getRecentReviews: async (limit = 6) => {
     const response = await axios.get('/api/products/reviews/recent', {

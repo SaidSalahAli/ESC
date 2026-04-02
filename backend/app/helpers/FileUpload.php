@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Helpers;
 
 /**
@@ -8,7 +9,7 @@ class FileUpload
 {
     private static $allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     private static $maxFileSize = 5242880; // 5MB in bytes
-    
+
     /**
      * Upload an image file
      * 
@@ -24,54 +25,81 @@ class FileUpload
             if (!isset($file['tmp_name']) || empty($file['tmp_name'])) {
                 return ['success' => false, 'path' => null, 'error' => 'No file uploaded'];
             }
-            
+
             // Check for upload errors
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 return ['success' => false, 'path' => null, 'error' => 'File upload error: ' . $file['error']];
             }
-            
+
             // Validate file type
             $fileType = mime_content_type($file['tmp_name']);
             if (!in_array($fileType, self::$allowedImageTypes)) {
                 return ['success' => false, 'path' => null, 'error' => 'Invalid file type. Only images are allowed.'];
             }
-            
+
             // Validate file size
             if ($file['size'] > self::$maxFileSize) {
                 return ['success' => false, 'path' => null, 'error' => 'File size exceeds 5MB limit'];
             }
-            
+
             // Create upload directory if it doesn't exist
             $uploadDir = __DIR__ . '/../../public/uploads/' . $directory;
             if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
+                if (!mkdir($uploadDir, 0777, true)) {
+                    return ['success' => false, 'path' => null, 'error' => 'Failed to create upload directory'];
+                }
+                chmod($uploadDir, 0777);
             }
-            
+            if (!is_writable($uploadDir)) {
+                return [
+                    'success' => false,
+                    'path' => null,
+                    'error' => 'المجلد ' . $uploadDir . ' مش قابل للكتابة — افتحه من Windows Explorer وأعط صلاحيات الكتابة'
+                ];
+            }
+
+            // Ensure directory is writable
+            if (!is_writable($uploadDir)) {
+                if (!chmod($uploadDir, 0777)) {
+                    return ['success' => false, 'path' => null, 'error' => 'Upload directory is not writable. Please check folder permissions.'];
+                }
+            }
+
             // Generate unique filename
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            // Map MIME type to file extension (handles browser-image-compression which sends blob without extension)
+            $mimeToExt = [
+                'image/jpeg' => 'jpg',
+                'image/jpg'  => 'jpg',
+                'image/png'  => 'png',
+                'image/gif'  => 'gif',
+                'image/webp' => 'webp',
+            ];
+            $extension = $mimeToExt[$fileType] ?? pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'jpg';
             $filename = uniqid() . '_' . time() . '.' . $extension;
             $filepath = $uploadDir . '/' . $filename;
-            
+
             // Move uploaded file
             if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-                return ['success' => false, 'path' => null, 'error' => 'Failed to move uploaded file'];
+                return ['success' => false, 'path' => null, 'error' => 'Failed to move uploaded file. Please ensure the uploads directory has write permissions.'];
             }
-            
+
+            // Ensure file is readable
+            chmod($filepath, 0644);
+
             // Delete old file if exists
             if ($oldFile) {
                 self::deleteFile($oldFile);
             }
-            
+
             // Return relative path
             $relativePath = '/uploads/' . $directory . '/' . $filename;
-            
+
             return ['success' => true, 'path' => $relativePath, 'error' => null];
-            
         } catch (\Exception $e) {
             return ['success' => false, 'path' => null, 'error' => $e->getMessage()];
         }
     }
-    
+
     /**
      * Delete a file
      * 
@@ -84,19 +112,19 @@ class FileUpload
             if (empty($filepath)) {
                 return false;
             }
-            
+
             $fullPath = __DIR__ . '/../../public' . $filepath;
-            
+
             if (file_exists($fullPath)) {
                 return unlink($fullPath);
             }
-            
+
             return false;
         } catch (\Exception $e) {
             return false;
         }
     }
-    
+
     /**
      * Validate image file from $_FILES
      * 
@@ -108,23 +136,23 @@ class FileUpload
         if (!isset($file['tmp_name']) || empty($file['tmp_name'])) {
             return ['valid' => false, 'error' => 'No file uploaded'];
         }
-        
+
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return ['valid' => false, 'error' => 'Upload error'];
         }
-        
+
         $fileType = mime_content_type($file['tmp_name']);
         if (!in_array($fileType, self::$allowedImageTypes)) {
             return ['valid' => false, 'error' => 'Invalid file type'];
         }
-        
+
         if ($file['size'] > self::$maxFileSize) {
             return ['valid' => false, 'error' => 'File too large (max 5MB)'];
         }
-        
+
         return ['valid' => true, 'error' => null];
     }
-    
+
     /**
      * Get file extension
      * 
@@ -136,4 +164,3 @@ class FileUpload
         return strtolower(pathinfo($filename, PATHINFO_EXTENSION));
     }
 }
-

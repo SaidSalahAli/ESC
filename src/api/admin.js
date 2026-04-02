@@ -168,9 +168,13 @@ export const adminService = {
     return response.data;
   },
 
+  getProductImagesByColor: async (productId) => {
+    const response = await axios.get(`/api/admin/products/${productId}/images/grouped`);
+    return response.data;
+  },
+
   deleteProductImage: async (productId, imageId) => {
     const response = await axios.delete(`/api/admin/products/${productId}/images/${imageId}`);
     return response.data;
   }
 };
-

@@ -22,7 +22,7 @@ const About = Loadable(lazy(() => import('pages/features/gest/AboutUs/AboutUs.js
 const Contact = Loadable(lazy(() => import('pages/features/gest/ContactUs/ContactUs.jsx')));
 const ReturnsPolicy = Loadable(lazy(() => import('pages/features/gest/Policy/ReturnsPolicy.jsx')));
 const ChatBot = Loadable(lazy(() => import('pages/features/gest/Chatbot/Chatbot.jsx')));
-const ProductDetails = Loadable(lazy(() => import('pages/features/gest/ProductDetails/ProductDetails.jsx')));
+const ProductDetails = Loadable(lazy(() => import('pages/features/gest/ProductDetails')));
 const OrderDetails = Loadable(lazy(() => import('pages/features/gest/OrderDetails/OrderDetails.jsx')));
 const Profile = Loadable(lazy(() => import('pages/features/gest/Profile/Profile.jsx')));
 const Checkout = Loadable(lazy(() => import('pages/features/gest/Checkout/Checkout.jsx')));
@@ -89,7 +89,7 @@ const MainRoutes = {
           path: 'chatbot',
           element: <ChatBot />
         },
-    
+
         {
           path: 'products/:id',
           element: <ProductDetails />
