@@ -151,7 +151,7 @@ export default function GuestOrderConfirmation() {
         </Paper>
 
         {/* ════ What's Next ════ */}
-        <Alert icon={<LocalShipping  />} severity="info" sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
+        <Alert icon={<LocalShipping />} severity="info" sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
           <Typography variant="body2">
             <FormattedMessage
               id="order-next-step"
@@ -373,23 +373,7 @@ export default function GuestOrderConfirmation() {
           >
             <FormattedMessage id="continue-shopping" defaultMessage="Continue Shopping" />
           </Button>
-
-          <Button
-            variant="outlined"
-            onClick={() => window.print()}
-            startIcon={<FileDownload />}
-            sx={{
-              borderColor: '#ddd',
-              color: '#555',
-              fontWeight: 500,
-              px: 4,
-              py: 1.2,
-              borderRadius: 1,
-              '&:hover': { borderColor: '#aaa', bgcolor: '#f7f7f7' }
-            }}
-          >
-            <FormattedMessage id="print-order" defaultMessage="Print Order" />
-          </Button>
+          
         </Box>
 
         {/* ════ Help Text ════ */}

@@ -740,7 +740,7 @@ function Checkout() {
             {/* ── Step 3: CIB Payment Form (shown after order creation) ── */}
             {/* CIB BANK PAYMENT FORM - CURRENTLY DISABLED */}
             {false && orderCreated && paymentMethod === 'cib_bank' && createdOrderId && (
-              <Paper elevation={0} sx={{ border: '2px solid #1976d2', borderRadius: 1, p: 3 }}>
+              <Paper elevation={0} sx={{ border: '2px solid #1976d2', p: 3 }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={2}>
                   <LockIcon sx={{ color: '#1976d2' }} />
                   <Typography variant="h6" fontWeight={700} color="#0f1111">

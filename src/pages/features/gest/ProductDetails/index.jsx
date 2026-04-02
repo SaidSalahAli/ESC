@@ -450,6 +450,7 @@ export default function ProductDetails() {
         name: product.name,
         price: product.price,
         sale_price: product.sale_price,
+        main_image: product.main_image || null,
         size_value: variantData.size_value,
         color_value: variantData.color_value,
         variant_name:

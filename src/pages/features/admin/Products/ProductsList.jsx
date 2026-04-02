@@ -46,7 +46,7 @@ const compressionOptions = {
   maxSizeMB: 0.5,
   maxWidthOrHeight: 2560,
   useWebWorker: true,
-  initialQuality: 0.95,
+  initialQuality: 0.9,
   alwaysKeepResolution: true,
   fileType: 'image/webp'
 };

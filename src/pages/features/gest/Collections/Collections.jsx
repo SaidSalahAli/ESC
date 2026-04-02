@@ -32,8 +32,7 @@ import {
   Collapse,
   IconButton,
   MenuItem,
-  InputLabel,
-  TextField
+  InputLabel
 } from '@mui/material';
 
 import TuneIcon from '@mui/icons-material/Tune';
@@ -67,17 +66,16 @@ export default function Collections() {
     category: 'all',
     minPrice: 0,
     maxPrice: DEFAULT_MAX_PRICE,
-    brand: '',
     page: 1,
     sort: 'created_at_DESC'
   });
 
+  const [sliderValue, setSliderValue] = useState([0, DEFAULT_MAX_PRICE]);
   const [totalPages, setTotalPages] = useState(1);
 
   const [openSections, setOpenSections] = useState({
     price: true,
-    category: true,
-    brand: true
+    category: true
   });
 
   const categoryMap = useMemo(() => {
@@ -87,18 +85,6 @@ export default function Collections() {
     });
     return map;
   }, [categories]);
-
-  const availableBrands = useMemo(() => {
-    const brands = new Set();
-
-    allProductsMeta.forEach((product) => {
-      if (product?.brand && String(product.brand).trim()) {
-        brands.add(String(product.brand).trim());
-      }
-    });
-
-    return Array.from(brands).sort((a, b) => a.localeCompare(b));
-  }, [allProductsMeta]);
 
   const parseSortValue = (sortValue) => {
     const value = String(sortValue || 'created_at_DESC');
@@ -140,7 +126,6 @@ export default function Collections() {
           slug: product.slug,
           main_image: product.main_image,
           stock_quantity: product.stock_quantity,
-          brand: product.brand || '',
           images: product.images || [],
           variants: product.variants || { size: [], color: [], combination: [] },
           reviews: product.reviews || { average_rating: 0, total_reviews: 0 }
@@ -167,10 +152,6 @@ export default function Collections() {
       if (selected) {
         params.category_id = selected.id;
       }
-    }
-
-    if (filters.brand && filters.brand.trim()) {
-      params.brand = filters.brand.trim();
     }
 
     return params;
@@ -209,16 +190,28 @@ export default function Collections() {
 
         setPriceRangeMax(normalizedMax);
 
-        setFilters((prev) => ({
-          ...prev,
-          maxPrice: prev.maxPrice === DEFAULT_MAX_PRICE || prev.maxPrice > normalizedMax ? normalizedMax : prev.maxPrice
-        }));
+        setFilters((prev) => {
+          const nextMax = prev.maxPrice === DEFAULT_MAX_PRICE || prev.maxPrice > normalizedMax ? normalizedMax : prev.maxPrice;
+
+          return {
+            ...prev,
+            maxPrice: nextMax
+          };
+        });
+
+        setSliderValue((prev) => {
+          const nextMin = prev[0] < 0 ? 0 : prev[0];
+          const nextMax = prev[1] === DEFAULT_MAX_PRICE || prev[1] > normalizedMax ? normalizedMax : prev[1];
+          return [nextMin, nextMax];
+        });
       } else {
         setPriceRangeMax(DEFAULT_MAX_PRICE);
+        setSliderValue([0, DEFAULT_MAX_PRICE]);
       }
     } catch (err) {
       console.error('Failed to fetch product meta:', err);
       setPriceRangeMax(DEFAULT_MAX_PRICE);
+      setSliderValue([0, DEFAULT_MAX_PRICE]);
     }
   }, []);
 
@@ -226,6 +219,10 @@ export default function Collections() {
     fetchCategories();
     fetchAllProductsMeta();
   }, [fetchCategories, fetchAllProductsMeta]);
+
+  useEffect(() => {
+    setSliderValue([filters.minPrice, filters.maxPrice]);
+  }, [filters.minPrice, filters.maxPrice]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -256,6 +253,8 @@ export default function Collections() {
     }
   }, [filters, categoriesLoading, buildParams, normalizeProducts]);
 
+  const handleChangePage = (_, newPage) => setFilters((prev) => ({ ...prev, page: newPage }));
+
   const toggleSection = (key) => {
     setOpenSections((prev) => ({
       ...prev,
@@ -264,11 +263,12 @@ export default function Collections() {
   };
 
   const clearFilters = () => {
+    const resetValues = [0, priceRangeMax];
+    setSliderValue(resetValues);
     setFilters({
       category: 'all',
       minPrice: 0,
       maxPrice: priceRangeMax,
-      brand: '',
       page: 1,
       sort: 'created_at_DESC'
     });
@@ -361,11 +361,15 @@ export default function Collections() {
                 <Collapse in={openSections.price}>
                   <Box sx={{ px: 1 }}>
                     <Slider
-                      value={[filters.minPrice, filters.maxPrice]}
+                      value={sliderValue}
                       min={0}
                       max={priceRangeMax}
                       step={50}
                       onChange={(_, value) => {
+                        if (!Array.isArray(value)) return;
+                        setSliderValue(value);
+                      }}
+                      onChangeCommitted={(_, value) => {
                         if (!Array.isArray(value)) return;
 
                         setFilters((prev) => ({
@@ -397,7 +401,7 @@ export default function Collections() {
                           color: '#8b8f98'
                         }}
                       >
-                        {filters.minPrice}
+                        {sliderValue[0]}
                       </Box>
 
                       <Box
@@ -421,7 +425,7 @@ export default function Collections() {
                           color: '#8b8f98'
                         }}
                       >
-                        {filters.maxPrice}
+                        {sliderValue[1]}
                       </Box>
                     </Stack>
                   </Box>
@@ -472,52 +476,6 @@ export default function Collections() {
                       />
                     ))}
                   </Stack>
-                </Collapse>
-              </Box>
-
-              <Divider sx={{ mb: 3 }} />
-
-              <Box sx={{ mb: 3 }}>
-                {sidebarSectionHeader('Brand', 'brand')}
-
-                <Collapse in={openSections.brand}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Type brand name"
-                    value={filters.brand}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        brand: e.target.value,
-                        page: 1
-                      }))
-                    }
-                  />
-
-                  {availableBrands.length > 0 && (
-                    <Stack spacing={1} mt={2}>
-                      {availableBrands.slice(0, 10).map((brand) => (
-                        <FormControlLabel
-                          key={brand}
-                          control={
-                            <Checkbox
-                              checked={filters.brand === brand}
-                              onChange={() =>
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  brand: prev.brand === brand ? '' : brand,
-                                  page: 1
-                                }))
-                              }
-                              sx={{ color: '#cfcfcf' }}
-                            />
-                          }
-                          label={brand}
-                        />
-                      ))}
-                    </Stack>
-                  )}
                 </Collapse>
               </Box>
 
@@ -621,16 +579,7 @@ export default function Collections() {
 
             {!loading && products.length > 0 && totalPages > 1 && (
               <Box display="flex" justifyContent="center" mt={5}>
-                <Pagination
-                  count={totalPages}
-                  page={filters.page}
-                  onChange={(_, value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      page: value
-                    }))
-                  }
-                />
+                <Pagination count={totalPages} page={filters.page} onChange={handleChangePage} />
               </Box>
             )}
           </Grid>

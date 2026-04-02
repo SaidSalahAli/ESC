@@ -164,6 +164,12 @@
   transition: all 0.3s ease;
   gap: 6px;
 }
+.right-section.right-white button,
+.right-section.right-white a {
+  color: var(--esc-bg-light);
+  background: none;
+  border: none;
+}
 
 .language-btn:hover {
   background: rgba(11, 18, 19, 0.05);
