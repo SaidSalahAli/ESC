@@ -1,30 +1,23 @@
 // src/pages/ProductDetails.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FormattedMessage, useIntl } from 'react-intl';
-import { Star1, Star, DocumentText } from 'iconsax-react';
+import { useIntl } from 'react-intl';
 
-// Services & Hooks
 import { productsService } from 'api';
 import { cartService } from 'api/cart';
 import useAuth from 'hooks/useAuth';
 import { openSnackbar } from 'api/snackbar';
 
-// Utils
 import { addToGuestCart } from 'utils/guestCart';
 import { getImageUrl } from 'utils/imageHelper';
 
-// Components
 import SEO from 'components/SEO';
+import ProductCard from 'components/ProductCard';
 
-// Styles
 import './productDetails.css';
-import ImageZoom from '../../../../components/ImageZoom';
 import ReviewsSection from './components/Reviews/ReviewsSection';
 import ProductInfo from './components/ProductInfo';
 import ProductGallery from './components/ProductGallery';
-
-// ==================== Helper Functions ====================
 
 const getStockFromCombination = (product, sizeValue, colorValue) => {
   if (!product?.variants?.combination) return 0;
@@ -44,6 +37,7 @@ const getAvailableColorsForSize = (sizeValue, product) => {
   );
 
   const availableColorValues = new Set();
+
   sizeCombinations.forEach((combo) => {
     if (combo.color_value && combo.color_value.trim() !== '') {
       availableColorValues.add(combo.color_value);
@@ -64,6 +58,7 @@ const getAvailableSizesForColor = (colorValue, product) => {
   );
 
   const availableSizeValues = new Set();
+
   colorCombinations.forEach((combo) => {
     if (combo.size_value && combo.size_value.toString().trim() !== '') {
       availableSizeValues.add(combo.size_value);
@@ -85,8 +80,6 @@ const getAllImages = (product) => {
   }));
 };
 
-// Returns images filtered by color_value from the already-loaded product.images
-// Falls back to all images if no color-specific images found
 const getImagesByColor = (product, colorValue) => {
   if (!colorValue || !product?.images) return getAllImages(product);
 
@@ -101,7 +94,6 @@ const getImagesByColor = (product, colorValue) => {
 
   return imgs.length > 0 ? imgs : getAllImages(product);
 };
-// ==================== Main Component ====================
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -109,19 +101,19 @@ export default function ProductDetails() {
   const { isLoggedIn } = useAuth();
   const intl = useIntl();
 
-  // Product State
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [displayImages, setDisplayImages] = useState([]);
+
   const [qty, setQty] = useState(1);
   const [addedMsg, setAddedMsg] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
 
-  // Reviews State
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState(null);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -133,12 +125,15 @@ export default function ProductDetails() {
   });
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // ==================== Effects ====================
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
+        setError(null);
+
         const response = await productsService.getById(id);
 
         if (response.success && response.data) {
@@ -156,46 +151,35 @@ export default function ProductDetails() {
       }
     };
 
-    if (id) {
-      fetchProduct();
-    }
+    if (id) fetchProduct();
   }, [id]);
 
   useEffect(() => {
     if (product?.id) {
       fetchReviews();
+      fetchRelatedProducts(product.id);
     }
   }, [product?.id, isLoggedIn]);
 
-  // ==================== Variant Initialization ====================
-
   const initializeDefaultVariants = (productData) => {
-    if (productData.variants?.color && productData.variants.color.length > 0) {
+    if (productData.variants?.color?.length > 0) {
       const firstColor = productData.variants.color[0];
       setSelectedColor(firstColor);
 
-      // Get sizes available for this color
       const availableSizesForColor = getAvailableSizesForColor(firstColor.value, productData);
-      if (availableSizesForColor.length > 0) {
-        setSelectedSize(availableSizesForColor[0].value);
-      } else {
-        setSelectedSize(null);
-      }
+      setSelectedSize(availableSizesForColor.length > 0 ? availableSizesForColor[0].value : null);
 
-      // Use images already embedded in product data — no extra API call needed
       setDisplayImages(getImagesByColor(productData, firstColor.value));
-    } else if (productData.variants?.size && productData.variants.size.length > 0) {
-      // Fallback: only sizes, no colors
+    } else if (productData.variants?.size?.length > 0) {
       const firstSize = productData.variants.size[0];
       setSelectedSize(firstSize.value);
       setDisplayImages(getAllImages(productData));
     } else {
-      // No variants — show all images
       setDisplayImages(getAllImages(productData));
     }
-  };
 
-  // ==================== Reviews Handlers ====================
+    setSelectedImageIndex(0);
+  };
 
   const fetchReviews = async () => {
     try {
@@ -210,6 +194,24 @@ export default function ProductDetails() {
       console.error('Error fetching reviews:', err);
     } finally {
       setLoadingReviews(false);
+    }
+  };
+
+  const fetchRelatedProducts = async (productId) => {
+    try {
+      setLoadingRelated(true);
+
+      const response = await productsService.getRelated(productId);
+
+      if (response.success) {
+        const data = Array.isArray(response.data) ? response.data : response.data?.products || [];
+        setRelatedProducts(data.filter((item) => String(item.id) !== String(productId)));
+      }
+    } catch (err) {
+      console.error('Error fetching related products:', err);
+      setRelatedProducts([]);
+    } finally {
+      setLoadingRelated(false);
     }
   };
 
@@ -239,6 +241,7 @@ export default function ProductDetails() {
 
     try {
       setSubmittingReview(true);
+
       const response = await productsService.addReview(product.id, {
         rating: reviewForm.rating,
         title: reviewForm.title,
@@ -252,6 +255,7 @@ export default function ProductDetails() {
           variant: 'alert',
           alert: { color: 'success' }
         });
+
         setReviewForm({ rating: 5, title: '', comment: '' });
         setShowReviewForm(false);
         fetchReviews();
@@ -259,7 +263,6 @@ export default function ProductDetails() {
         throw new Error(response.message || 'Failed to submit review');
       }
     } catch (err) {
-      console.error('Error submitting review:', err);
       openSnackbar({
         open: true,
         message: err.message || intl.formatMessage({ id: 'failed-submit-review' }),
@@ -271,18 +274,16 @@ export default function ProductDetails() {
     }
   };
 
-  // ==================== Variant Handlers ====================
-
   const handleSizeChange = (sizeValue) => {
     if (!sizeValue) return;
 
     setSelectedSize(sizeValue);
     setSelectedImageIndex(0);
 
-    // When user changes size (secondary), ensure selectedColor is still valid
     if (selectedColor) {
       const combinations = product.variants?.combination || [];
       const matching = combinations.find((c) => c.size_value === sizeValue && c.color_value === selectedColor.value);
+
       if (!matching) {
         const availableColors = getAvailableColorsForSize(sizeValue, product);
         setSelectedColor(availableColors.length > 0 ? availableColors[0] : null);
@@ -295,12 +296,10 @@ export default function ProductDetails() {
 
     setSelectedColor(color);
     setSelectedImageIndex(0);
-
-    // Filter images from already-loaded product.images by color_value — no API call needed
     setDisplayImages(getImagesByColor(product, color.value));
 
-    // Pick a default size for this color
     const availableSizes = getAvailableSizesForColor(color.value, product);
+
     if (availableSizes.length > 0) {
       setSelectedSize(availableSizes[0].value);
     } else {
@@ -314,6 +313,35 @@ export default function ProductDetails() {
     }
   };
 
+  const handleThumbnailSelect = (img) => {
+    if (!img || !product) return;
+
+    const currentMainImages = displayImages.length > 0 ? displayImages : getAllImages(product);
+
+    if (img.color_value) {
+      const colors = product.variants?.color || [];
+      const targetColor = colors.find((color) => color.value === img.color_value || color.color_value === img.color_value);
+
+      if (targetColor) {
+        setSelectedColor(targetColor);
+
+        const colorImages = getImagesByColor(product, img.color_value);
+        setDisplayImages(colorImages);
+
+        const targetIndex = colorImages.findIndex((image) => image.url === img.url);
+        setSelectedImageIndex(targetIndex !== -1 ? targetIndex : 0);
+
+        const availableSizes = getAvailableSizesForColor(targetColor.value, product);
+        setSelectedSize(availableSizes.length > 0 ? availableSizes[0].value : null);
+
+        return;
+      }
+    }
+
+    const mainIndex = currentMainImages.findIndex((image) => image.url === img.url);
+    setSelectedImageIndex(mainIndex !== -1 ? mainIndex : 0);
+  };
+
   const handleQtyChange = (delta) => {
     setQty((q) => {
       const next = q + delta;
@@ -322,15 +350,13 @@ export default function ProductDetails() {
     });
   };
 
-  // ==================== Cart Handlers ====================
-
   const handleAddToCart = async () => {
-    const success = await validateAndAddToCart();
-    return success;
+    return await validateAndAddToCart();
   };
 
   const handleBuyNow = async () => {
     const success = await validateAndAddToCart();
+
     if (success) {
       navigate('/checkout');
     }
@@ -339,8 +365,8 @@ export default function ProductDetails() {
   const validateAndAddToCart = async () => {
     if (!product || addingToCart) return false;
 
-    const hasSizeVariants = product.variants?.size && product.variants.size.length > 0;
-    const hasColorVariants = product.variants?.color && product.variants.color.length > 0;
+    const hasSizeVariants = product.variants?.size?.length > 0;
+    const hasColorVariants = product.variants?.color?.length > 0;
 
     if (hasSizeVariants && !selectedSize) {
       openSnackbar({
@@ -398,14 +424,14 @@ export default function ProductDetails() {
 
     if (!isLoggedIn) {
       return await addToGuestCartHandler(variantId, variantData);
-    } else {
-      return await addToLoggedInCartHandler(variantId);
     }
+
+    return await addToLoggedInCartHandler(variantId);
   };
 
   const findVariantId = (hasSizeVariants, hasColorVariants) => {
     let variantId = null;
-    let variantData = {
+    const variantData = {
       size_value: null,
       color_value: null
     };
@@ -421,32 +447,19 @@ export default function ProductDetails() {
         variantId = combinationVariant.id;
         variantData.size_value = selectedSize;
         variantData.color_value = selectedColor.value;
-      } else {
-        openSnackbar({
-          open: true,
-          message: intl.formatMessage({ id: 'combination-not-available' }) || 'This size and color combination is not available',
-          variant: 'alert',
-          alert: { color: 'error' }
-        });
-        return { variantId: null, variantData };
       }
     } else if (selectedColor && hasColorVariants && !hasSizeVariants) {
-      const sizeVariant = combinations.find((combo) => combo.size_value === selectedSize);
+      const comboForColor = combinations.find((c) => c.color_value === selectedColor.value);
 
-      if (sizeVariant) {
-        variantId = sizeVariant.id;
-        variantData.size_value = selectedSize;
-      } else {
-        const comboForColor = combinations.find((c) => c.color_value === selectedColor.value);
-        if (comboForColor) {
-          variantId = comboForColor.id;
-          variantData.color_value = selectedColor.value;
-        }
+      if (comboForColor) {
+        variantId = comboForColor.id;
+        variantData.color_value = selectedColor.value;
       }
     } else if (selectedSize && hasSizeVariants && !hasColorVariants) {
-      const colorCombo = combinations.find((combo) => combo.size_value === selectedSize);
-      if (colorCombo) {
-        variantId = colorCombo.id;
+      const comboForSize = combinations.find((combo) => combo.size_value === selectedSize);
+
+      if (comboForSize) {
+        variantId = comboForSize.id;
         variantData.size_value = selectedSize;
       }
     }
@@ -483,15 +496,16 @@ export default function ProductDetails() {
 
       setTimeout(() => setAddedMsg(''), 2500);
       window.dispatchEvent(new Event('cartUpdated'));
+
       return true;
     } catch (err) {
-      console.error('Error adding to guest cart:', err);
       openSnackbar({
         open: true,
         message: intl.formatMessage({ id: 'failed-add-cart' }),
         variant: 'alert',
         alert: { color: 'error' }
       });
+
       return false;
     } finally {
       setAddingToCart(false);
@@ -517,52 +531,48 @@ export default function ProductDetails() {
 
         setTimeout(() => setAddedMsg(''), 2500);
         window.dispatchEvent(new Event('cartUpdated'));
+
         return true;
-      } else {
-        throw new Error(response.message || 'Failed to add to cart');
       }
+
+      throw new Error(response.message || 'Failed to add to cart');
     } catch (err) {
-      console.error('Error adding to cart:', err);
       openSnackbar({
         open: true,
         message: err.message || intl.formatMessage({ id: 'failed-add-cart' }),
         variant: 'alert',
         alert: { color: 'error' }
       });
+
       return false;
     } finally {
       setAddingToCart(false);
     }
   };
 
-  // ==================== Computed Values ====================
-
   const getCurrentStock = () => {
     const combinations = product?.variants?.combination || [];
-    const hasCombinations = combinations.length > 0;
 
-    if (hasCombinations) {
-      const hasSizeVariants = product.variants?.size && product.variants.size.length > 0;
-      const hasColorVariants = product.variants?.color && product.variants.color.length > 0;
+    if (combinations.length > 0) {
+      const hasSizeVariants = product.variants?.size?.length > 0;
+      const hasColorVariants = product.variants?.color?.length > 0;
 
       if (selectedSize && selectedColor) {
         return getStockFromCombination(product, selectedSize, selectedColor.value);
       }
 
       if (selectedColor && !hasSizeVariants) {
-        const sum = combinations.reduce((acc, c) => {
+        return combinations.reduce((acc, c) => {
           if (c.color_value === selectedColor.value) return acc + (parseInt(c.stock_quantity, 10) || 0);
           return acc;
         }, 0);
-        return sum;
       }
 
       if (selectedSize && !hasColorVariants) {
-        const sum = combinations.reduce((acc, c) => {
+        return combinations.reduce((acc, c) => {
           if (c.size_value === selectedSize) return acc + (parseInt(c.stock_quantity, 10) || 0);
           return acc;
         }, 0);
-        return sum;
       }
 
       return 0;
@@ -570,8 +580,6 @@ export default function ProductDetails() {
 
     return parseInt(product?.stock_quantity, 10) || 0;
   };
-
-  // ==================== Render Helpers ====================
 
   if (loading) {
     return (
@@ -592,7 +600,6 @@ export default function ProductDetails() {
     );
   }
 
-  // Use displayImages if populated, otherwise fall back to all product images
   const allImages = getAllImages(product);
   const mainImages = displayImages.length > 0 ? displayImages : allImages;
   const sizes = product.variants?.size || [];
@@ -630,8 +637,6 @@ export default function ProductDetails() {
     category: product.category?.name || 'Sportswear'
   };
 
-  // ==================== Render ====================
-
   return (
     <>
       <SEO
@@ -650,22 +655,21 @@ export default function ProductDetails() {
 
       <div className="product-details-page">
         <div className="container">
-          {/* Breadcrumb */}
           <div className="product-breadcrumb text-muted">
             <span>Home</span> / <span>Products</span> / <span className="current">{product.name}</span>
           </div>
 
           <div className="product-details-grid">
-            {/* Gallery Section */}
             <ProductGallery
               allImages={allImages}
               mainImages={mainImages}
               productName={product.name}
               selectedImageIndex={selectedImageIndex}
               onImageSelect={setSelectedImageIndex}
+              onThumbnailSelect={handleThumbnailSelect}
               selectedColor={selectedColor?.value || ''}
             />
-            {/* Details Section */}
+
             <ProductInfo
               product={product}
               reviewStats={reviewStats}
@@ -688,6 +692,7 @@ export default function ProductDetails() {
               getAvailableSizesForColor={(color) => getAvailableSizesForColor(color, product)}
             />
           </div>
+
           <ReviewsSection
             reviews={reviews}
             reviewStats={reviewStats}
@@ -700,11 +705,22 @@ export default function ProductDetails() {
             onReviewFormChange={setReviewForm}
             onSubmitReview={handleSubmitReview}
           />
-          {/* Reviews Section */}
+
+          {relatedProducts.length > 0 && (
+            <section className="you-may-like-section">
+              <h2 className="you-may-like-title">YOU MAY ALSO LIKE</h2>
+
+              <div className="you-may-like-grid">
+                {relatedProducts.slice(0, 4).map((item) => (
+                  <ProductCard key={item.id} item={item} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {loadingRelated && <div className="you-may-like-loading">Loading related products...</div>}
         </div>
       </div>
     </>
   );
 }
-
-// ==================== Sub Components ====================

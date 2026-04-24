@@ -64,19 +64,29 @@ export default function ReviewsSection() {
   /* ================= Render ================= */
 
   return (
-    <Box sx={{ py: { xs: 6, md: 10 }, bgcolor: '#fafafa' }}>
+    <Box sx={{ py: { xs: 6, md: 10 } }}>
       <Container maxWidth="xl">
         {/* ===== Title ===== */}
-        <Typography variant="h4" fontWeight={700} textAlign="center" mb={{ xs: 4, md: 6 }}>
+
+        <Typography
+          variant="h2"
+          textAlign="center"
+          fontWeight={700}
+          sx={{
+            fontSize: {
+              xs: '1.8rem',
+              sm: '2.2rem',
+              md: '2.6rem'
+            }
+          }}
+        >
           <FormattedMessage id="customer-reviews" defaultMessage={'Customer Reviews'} />
         </Typography>
-
         {/* ===== Swiper Wrapper ===== */}
         <Box
           sx={{
             position: 'relative',
             pb: 6,
-
             '& .swiper-pagination': {
               position: 'static !important',
               mt: 3
@@ -138,6 +148,8 @@ function ReviewCard({ review, onClick }) {
       sx={{
         width: '100%',
         bgcolor: '#fff',
+        border: '1px solid',
+
         borderRadius: 0,
         p: 3,
         boxShadow: 0,
@@ -145,12 +157,7 @@ function ReviewCard({ review, onClick }) {
         transition: 'all .25s ease',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
-
-        '&:hover': {
-          transform: 'translateY(-6px)',
-          boxShadow: 4
-        }
+        justifyContent: 'space-between'
       }}
     >
       {/* ⭐ Stars */}

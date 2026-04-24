@@ -1,7 +1,14 @@
 import { useEffect } from 'react';
 import ImageZoom from '../../../../../components/ImageZoom';
 
-export default function ProductGallery({ allImages = [], mainImages = [], productName, selectedImageIndex, onImageSelect }) {
+export default function ProductGallery({
+  allImages = [],
+  mainImages = [],
+  productName,
+  selectedImageIndex,
+  onImageSelect,
+  onThumbnailSelect
+}) {
   useEffect(() => {
     if (selectedImageIndex >= mainImages.length) {
       onImageSelect(0);
@@ -22,11 +29,13 @@ export default function ProductGallery({ allImages = [], mainImages = [], produc
                 <button
                   key={img.id || idx}
                   onClick={() => {
-                    const mainIndex = mainImages.findIndex((mainImg) => mainImg.url === img.url);
-
-                    if (mainIndex !== -1) {
-                      onImageSelect(mainIndex);
+                    if (onThumbnailSelect) {
+                      onThumbnailSelect(img);
+                      return;
                     }
+
+                    const mainIndex = mainImages.findIndex((mainImg) => mainImg.url === img.url);
+                    if (mainIndex !== -1) onImageSelect(mainIndex);
                   }}
                   className={`thumb-btn ${isActive ? 'active' : ''}`}
                   aria-label={`View image ${idx + 1}`}

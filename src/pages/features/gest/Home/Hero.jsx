@@ -119,6 +119,8 @@ function Hero() {
         sx={{
           position: 'relative',
           zIndex: 2,
+          display: 'flex',
+          justifyContent: 'center',
           py: { xs: 8, md: 10 }
         }}
       >
@@ -126,7 +128,7 @@ function Hero() {
           sx={{
             maxWidth: { xs: '100%', md: 760 },
             mx: { xs: 'auto', md: 0 },
-            textAlign: { xs: 'center', md: 'left' },
+            textAlign: 'center',
             color: '#fff',
             opacity: contentVisible ? 1 : 0,
             transform: contentVisible ? 'translateY(0)' : 'translateY(26px)',
@@ -172,7 +174,6 @@ function Hero() {
           <Typography
             sx={{
               mb: 3.5,
-              maxWidth: { xs: '100%', md: 560 },
               mx: { xs: 'auto', md: 0 },
               color: 'rgba(255,255,255,0.88)',
               lineHeight: 1.75,
@@ -191,7 +192,7 @@ function Hero() {
             sx={{
               display: 'flex',
               flexWrap: 'wrap',
-              justifyContent: { xs: 'center', md: 'flex-start' },
+              justifyContent: 'center',
               gap: 1.25,
               mb: 4
             }}
@@ -202,11 +203,10 @@ function Hero() {
                 sx={{
                   px: 1.6,
                   py: 1,
-                  border: '1px solid rgba(255,255,255,0.12)',
                   background: 'rgba(255,255,255,0.06)',
                   backdropFilter: 'blur(6px)',
                   color: 'rgba(255,255,255,0.92)',
-                  fontSize: '0.88rem',
+                  // fontSize: '0.88rem',
                   fontWeight: 500,
                   lineHeight: 1,
                   whiteSpace: 'nowrap'
@@ -218,7 +218,7 @@ function Hero() {
           </Box>
 
           {/* CTAs */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent={{ xs: 'center', md: 'flex-start' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent={{ xs: 'center', md: 'center' }}>
             <Button
               component={RouterLink}
               to="/collections"
@@ -226,8 +226,8 @@ function Hero() {
               size="large"
               sx={{
                 minWidth: 190,
-                px: 4.5,
-                py: 1.45,
+                // px: 4.5,
+                // py: 1.45,
                 borderRadius: 0,
                 fontWeight: 700,
                 fontSize: '0.98rem',
@@ -252,7 +252,7 @@ function Hero() {
               sx={{
                 minWidth: 170,
                 px: 4.5,
-                py: 1.45,
+                // py: 1.45,
                 borderRadius: 0,
                 fontWeight: 600,
                 color: '#fff',

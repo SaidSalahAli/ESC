@@ -35,7 +35,19 @@ function InstagramSection() {
     <Box sx={{ py: 8 }}>
       {/* Header */}
       <Box sx={{ textAlign: 'center', mb: 6 }}>
-        <Typography variant="h4" fontWeight={600}>
+        <Typography
+          variant="h2"
+          textAlign="center"
+          fontWeight={700}
+          sx={{
+            mb: { xs: 4, md: 6 },
+            fontSize: {
+              xs: '1.8rem',
+              sm: '2.2rem',
+              md: '2.6rem'
+            }
+          }}
+        >
           <FormattedMessage id="ESC-moments" />
         </Typography>
       </Box>

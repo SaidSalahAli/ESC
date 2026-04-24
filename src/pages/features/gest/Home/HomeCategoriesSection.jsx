@@ -13,6 +13,27 @@ function HomeCategoriesSection() {
 
   return (
     <Box>
+           <Box sx={{ textAlign: 'center', my: 6 }}>
+              <Typography
+                variant="h2"
+                textAlign="center"
+                fontWeight={700}
+                sx={{
+                  fontSize: {
+                    xs: '1.8rem',
+                    sm: '2.2rem',
+                    md: '2.6rem'
+                  }
+                }}
+              >
+
+                <FormattedMessage id="Shop-By-Category" />
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                <FormattedMessage id="Find-your-perfect-fit" />
+
+              </Typography>
+            </Box>
       <Box
         sx={{
           display: 'grid',
@@ -20,6 +41,7 @@ function HomeCategoriesSection() {
           gap: 3
         }}
       >
+        
         {/* LEFT BIG */}
         <CategoryCard title="category_aqua" image={img4} height={{ xs: 400, md: 600 }} onClick={() => navigate('/collections')} />
 

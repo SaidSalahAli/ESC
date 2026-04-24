@@ -53,7 +53,7 @@
 
 .gallery-main {
   background: #101010;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -85,7 +85,7 @@
 
 .thumb-btn {
   padding: 0;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   border: 1px solid #eee;
   background: var(--surface);
@@ -209,8 +209,8 @@
 
 .color-swatch {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   padding: 0;
   border: 2px solid #ddd;
@@ -256,7 +256,7 @@
 }
 
 .size-option {
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid #ccc;
   padding: 10px 16px;
   min-width: 54px;
@@ -320,7 +320,7 @@
   gap: 6px;
   background: #fff;
   padding: 6px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid #eee;
 }
 
@@ -351,7 +351,7 @@
 .add-to-cart-btn {
   width: 100%;
   padding: 12px 16px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 2px solid #000;
   background: #fff;
   color: #000;
@@ -376,7 +376,7 @@
 .buy-now-btn {
   width: 100%;
   padding: 12px 16px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 2px solid #000;
   background: #000;
   color: #fff;
@@ -895,5 +895,59 @@
   .size-option {
     padding: 8px 12px;
     font-size: 12px;
+  }
+}
+.you-may-like-section {
+  margin-top: 40px;
+  padding-top: 40px;
+}
+
+.you-may-like-title {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 48px;
+}
+
+.you-may-like-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 42px;
+}
+
+.you-may-like-loading {
+  text-align: center;
+  padding: 40px 0;
+  color: #777;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 1200px) {
+  .you-may-like-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .you-may-like-section {
+    margin-top: 40px;
+  }
+
+  .you-may-like-title {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+
+  .you-may-like-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .you-may-like-grid {
+    grid-template-columns: 1fr;
   }
 }

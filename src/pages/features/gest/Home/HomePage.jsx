@@ -36,19 +36,16 @@ function HomePage() {
       />
       <Hero />
       {/* <StorySection /> */}
-      <ScrollReveal>
-        <Featured />
-      </ScrollReveal>
-
-      <ScrollReveal>
-        <Newsletter />
-      </ScrollReveal>
-
       <div className="container">
         <ScrollReveal>
           <HomeCategoriesSection />
         </ScrollReveal>
       </div>
+      <ScrollReveal>
+        <Featured />
+      </ScrollReveal>
+
+
 
       <ScrollReveal>
         <InstagramSection />
@@ -56,6 +53,9 @@ function HomePage() {
 
       <ScrollReveal>
         <ReviewsSection />
+      </ScrollReveal>
+      <ScrollReveal>
+        <Newsletter />
       </ScrollReveal>
     </>
   );

@@ -57,6 +57,7 @@ function Newsletter() {
         }
       }}
     >
+      
       {/* Content */}
       <Stack alignItems="center" spacing={3} sx={{ position: 'relative', zIndex: 2 }}>
         {/* Title */}
