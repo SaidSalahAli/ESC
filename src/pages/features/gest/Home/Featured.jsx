@@ -189,29 +189,38 @@ export default function Featured() {
           >
             <Swiper
               modules={[Pagination, Navigation, Autoplay]}
-              spaceBetween={24}
               autoplay={{ delay: 6000, disableOnInteraction: false }}
               pagination={{ clickable: true }}
               breakpoints={{
-                0: { slidesPerView: 1.1 },
-                600: { slidesPerView: 1.5 },
-                900: { slidesPerView: 2.2 },
-                1200: { slidesPerView: 3 },
-                1536: { slidesPerView: 4 }
+                0: { slidesPerView: 1, spaceBetween: 16 },
+                600: { slidesPerView: 1.5, spaceBetween: 20 },
+                900: { slidesPerView: 2.2, spaceBetween: 24 },
+                1200: { slidesPerView: 3, spaceBetween: 24 },
+                1536: { slidesPerView: 4, spaceBetween: 24 }
               }}
             >
               {products.map((item) => (
                 <SwiperSlide key={item.id}>
-                  {/* ✅ CARD HEIGHT CONTROL */}
                   <Box sx={{ width: '100%', height: '100%' }}>
                     <ProductCard
                       item={item}
                       addToCart={() => handleAddToCart(item)}
                       sx={{
                         height: '100%',
-
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+
+                        '& img': {
+                          width: '100%',
+                          height: {
+                            xs: 320,
+                            sm: 380,
+                            md: 460
+                          },
+                          objectFit: 'cover',
+                          objectPosition: 'center top',
+                          display: 'block'
+                        }
                       }}
                     />
                   </Box>

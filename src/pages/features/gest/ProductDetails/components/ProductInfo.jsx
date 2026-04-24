@@ -18,12 +18,24 @@ export default function ProductInfo({
   onColorChange,
   onQtyChange,
   onAddToCart,
+  onBuyNow,
   getCurrentStock,
   getStockFromCombination,
   getAvailableColorsForSize,
   getAvailableSizesForColor
 }) {
   const currentStock = getCurrentStock();
+  const hasSizeVariants = sizes && sizes.length > 0;
+  const hasColorVariants = colors && colors.length > 0;
+
+  // Generate SKU
+  const generateSKU = () => {
+    if (product.sku) return product.sku;
+    return `ESC-${product.id}-${selectedColor?.value || 'N/A'}-${selectedSize || 'N/A'}`;
+  };
+
+  const isAddToCartDisabled =
+    addingToCart || currentStock === 0 || (hasSizeVariants && !selectedSize) || (hasColorVariants && !selectedColor);
 
   return (
     <aside className="details-column">
@@ -43,7 +55,6 @@ export default function ProductInfo({
           colors={colors}
           onColorChange={onColorChange}
           getAvailableSizesForColor={getAvailableSizesForColor}
-          getStockFromCombination={getStockFromCombination}
           product={product}
         />
       )}
@@ -60,7 +71,7 @@ export default function ProductInfo({
       )}
 
       {/* Quantity */}
-      <div className="qty-cta">
+      <div className="qty-section">
         <div className="qty">
           <button type="button" onClick={() => onQtyChange(-1)}>
             −
@@ -72,14 +83,16 @@ export default function ProductInfo({
         </div>
       </div>
 
-      {/* Add to Cart Button */}
-      <button
-        className="buy-now-btn"
-        onClick={onAddToCart}
-        disabled={addingToCart || currentStock === 0 || (sizes.length > 0 && !selectedSize) || (colors.length > 0 && !selectedColor)}
-      >
-        <FormattedMessage id="add-to-cart" defaultMessage="BUY IT NOW" />
-      </button>
+      {/* CTA Buttons */}
+      <div className="cta-buttons">
+        <button className="add-to-cart-btn" onClick={onAddToCart} disabled={isAddToCartDisabled} type="button">
+          <FormattedMessage id="add-to-cart" defaultMessage="ADD TO CART" />
+        </button>
+
+        <button className="buy-now-btn" onClick={onBuyNow} disabled={isAddToCartDisabled} type="button">
+          <FormattedMessage id="buy-it-now" defaultMessage="BUY IT NOW" />
+        </button>
+      </div>
 
       {addedMsg && <div className="added-msg">{addedMsg}</div>}
 

@@ -1,29 +1,28 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { cartService } from 'api/cart';
-import useAuth from 'hooks/useAuth';
-import { addToGuestCart } from 'utils/guestCart';
-import { openSnackbar } from 'api/snackbar';
 import { useIntl } from 'react-intl';
-import { getImageUrl, cleanImagePath } from 'utils/imageHelper';
+import { Star } from 'iconsax-react';
+import { getImageUrl } from 'utils/imageHelper';
 import { Box, Card, Typography } from '@mui/material';
 
-function ProductCard({ item, addToCart }) {
+function ProductCard({ item }) {
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
   const intl = useIntl();
 
   const [isHovered, setIsHovered] = useState(false);
-  const [hoveredColor, setHoveredColor] = useState(null); // اللون اللي الماوس عليه
-  const [selectedColor, setSelectedColor] = useState(null); // اللون المختار بالكليك
-  const [addingToCart, setAddingToCart] = useState(false);
+  const [hoveredColor, setHoveredColor] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
 
-  /* ─── بناء قائمة الصور ─── */
   const allImages = useMemo(() => {
     const imgs = [];
+
     if (item.main_image) {
-      imgs.push({ url: getImageUrl(item.main_image), color_value: null });
+      imgs.push({
+        url: getImageUrl(item.main_image),
+        color_value: null
+      });
     }
+
     if (item.images?.length) {
       item.images.forEach((img) => {
         if (img.image_url) {
@@ -34,59 +33,62 @@ function ProductCard({ item, addToCart }) {
         }
       });
     }
+
     return imgs;
   }, [item]);
 
-  /* ─── الصور المعروضة بناءً على اللون النشط ─── */
-  const activeColor = hoveredColor ?? selectedColor; // hover يكسب على selected
+  const activeColor = hoveredColor ?? selectedColor;
 
   const displayImages = useMemo(() => {
     if (!activeColor) {
-      // بدون لون مختار: main_image + أول صورة إضافية
       const fallback = allImages.length > 0 ? allImages : [{ url: item.image }, { url: item.image }];
       return fallback.length === 1 ? [fallback[0], fallback[0]] : fallback.slice(0, 2);
     }
 
-    // فلتر الصور اللي color_value بتاعها = activeColor
     const colorImgs = allImages.filter((img) => img.color_value === activeColor);
 
     if (colorImgs.length === 0) {
-      // مفيش صور للون ده، ارجع للافتراضي
-      return allImages.slice(0, 2);
+      const fallback = allImages.length > 0 ? allImages : [{ url: item.image }, { url: item.image }];
+      return fallback.length === 1 ? [fallback[0], fallback[0]] : fallback.slice(0, 2);
     }
-    if (colorImgs.length === 1) {
-      return [colorImgs[0], colorImgs[0]];
-    }
-    return colorImgs.slice(0, 2);
+
+    return colorImgs.length === 1 ? [colorImgs[0], colorImgs[0]] : colorImgs.slice(0, 2);
   }, [activeColor, allImages, item.image]);
 
-  /* ─── قائمة الألوان الفريدة من images ─── */
   const colorList = useMemo(() => {
     const seen = new Set();
-    const colors = [];
-    allImages.forEach((img) => {
+
+    return allImages.reduce((acc, img) => {
       if (img.color_value && !seen.has(img.color_value)) {
         seen.add(img.color_value);
-        colors.push(img.color_value);
+        acc.push({
+          value: img.color_value,
+          image: img.url
+        });
       }
-    });
-    return colors;
+
+      return acc;
+    }, []);
   }, [allImages]);
 
-  /* ─── خصم ─── */
-  const discountPercent = item.sale_price && item.price ? Math.round(((item.price - item.sale_price) / item.price) * 100) : null;
+  const discountPercent =
+    item.sale_price && item.price ? Math.round(((Number(item.price) - Number(item.sale_price)) / Number(item.price)) * 100) : null;
 
-  /* ─── stock ─── */
+  const rating = Number(item?.reviews?.average_rating || 0);
+  const totalReviews = Number(item?.reviews?.total_reviews || 0);
+
   const getCardStock = () => {
     try {
       if (item.variants?.combination?.length > 0) {
         return item.variants.combination.some((c) => (Number(c.stock_quantity) || 0) > 0) ? 1 : 0;
       }
+
       return Number(item?.stock_quantity ?? 0);
     } catch {
       return Number(item?.stock_quantity ?? 0);
     }
   };
+
   const cardStock = getCardStock();
 
   const handleCardClick = (e) => {
@@ -100,7 +102,7 @@ function ProductCard({ item, addToCart }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        setHoveredColor(null); // reset hover color عند مغادرة الكارد
+        setHoveredColor(null);
       }}
       elevation={0}
       sx={{
@@ -114,7 +116,6 @@ function ProductCard({ item, addToCart }) {
         background: 'transparent'
       }}
     >
-      {/* ── Image ── */}
       <Box
         sx={{
           position: 'relative',
@@ -125,7 +126,6 @@ function ProductCard({ item, addToCart }) {
           flexShrink: 0
         }}
       >
-        {/* Discount badge */}
         {discountPercent && (
           <Box
             sx={{
@@ -143,11 +143,10 @@ function ProductCard({ item, addToCart }) {
               letterSpacing: '0.5px'
             }}
           >
-            {discountPercent}%
+            {discountPercent}% OFF
           </Box>
         )}
 
-        {/* Out of stock */}
         {cardStock === 0 && (
           <Box
             sx={{
@@ -168,10 +167,9 @@ function ProductCard({ item, addToCart }) {
           </Box>
         )}
 
-        {/* Images — front & back */}
         {displayImages.map((img, i) => (
           <Box
-            key={`${activeColor}-${i}`}
+            key={`${activeColor || 'default'}-${img.url}-${i}`}
             component="img"
             src={img.url}
             alt={item.name}
@@ -195,42 +193,52 @@ function ProductCard({ item, addToCart }) {
         ))}
       </Box>
 
-      {/* ── Body ── */}
       <Box sx={{ pt: 1.25, pb: 1.75, px: 0.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        {/* Color Swatches */}
         {colorList.length > 0 && (
-          <Box sx={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-            {colorList.map((colorVal) => (
+          <Box sx={{ display: 'flex', gap: '7px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {colorList.map((color) => (
               <Box
-                key={colorVal}
+                key={color.value}
                 className="swatch-btn"
-                title={colorVal}
-                onMouseEnter={() => setHoveredColor(colorVal)}
+                title={color.value}
+                onMouseEnter={() => setHoveredColor(color.value)}
                 onMouseLeave={() => setHoveredColor(null)}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedColor((prev) => (prev === colorVal ? null : colorVal));
+                  setSelectedColor((prev) => (prev === color.value ? null : color.value));
                 }}
                 sx={{
-                  width: 18,
-                  height: 18,
+                  width: 24,
+                  height: 24,
                   borderRadius: '50%',
-                  bgcolor: colorVal, // CSS color name مثل "black", "red"
-                  outline: selectedColor === colorVal ? '2px solid rgba(0,0,0,0.6)' : '1.5px solid rgba(0,0,0,0.18)',
-                  outlineOffset: selectedColor === colorVal ? '1.5px' : '0px',
+                  overflow: 'hidden',
+                  bgcolor: color.value,
+                  outline: selectedColor === color.value ? '2px solid #000' : '1px solid #ddd',
+                  outlineOffset: selectedColor === color.value ? '2px' : '0px',
                   cursor: 'pointer',
-                  transition: 'outline 0.15s, outline-offset 0.15s',
+                  transition: '0.2s ease',
                   '&:hover': {
-                    outline: '2px solid rgba(0,0,0,0.45)',
-                    outlineOffset: '1.5px'
+                    outline: '2px solid #000',
+                    outlineOffset: '2px'
                   }
                 }}
-              />
+              >
+                <Box
+                  component="img"
+                  src={color.image}
+                  alt={color.value}
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }}
+                />
+              </Box>
             ))}
           </Box>
         )}
 
-        {/* Name */}
         <Typography
           sx={{
             fontFamily: '"Barlow Condensed", "Roboto Condensed", sans-serif',
@@ -245,17 +253,32 @@ function ProductCard({ item, addToCart }) {
           {item.name}
         </Typography>
 
-        {/* Price */}
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+          <Typography sx={{ fontSize: '0.82rem', fontWeight: 500, color: 'text.primary' }}>
+            EGP {Number(item.sale_price || item.price).toLocaleString()}
+          </Typography>
+
           {item.sale_price && (
             <Typography sx={{ fontSize: '0.78rem', color: 'text.disabled', textDecoration: 'line-through' }}>
               EGP {Number(item.price).toLocaleString()}
             </Typography>
           )}
-          <Typography sx={{ fontSize: '0.82rem', fontWeight: 500, color: 'text.primary' }}>
-            EGP {Number(item.sale_price || item.price).toLocaleString()}
-          </Typography>
         </Box>
+
+        {totalReviews > 0 && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                size="14"
+                variant={star <= Math.round(rating) ? 'Bold' : 'Outline'}
+                color={star <= Math.round(rating) ? '#ffc238' : '#d8d8d8'}
+              />
+            ))}
+
+            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>({totalReviews})</Typography>
+          </Box>
+        )}
       </Box>
     </Card>
   );

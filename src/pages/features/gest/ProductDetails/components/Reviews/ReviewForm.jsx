@@ -1,3 +1,6 @@
+import { Star } from 'iconsax-react';
+import { FormattedMessage, useIntl } from 'react-intl';
+
 function ReviewForm({ reviewForm, submittingReview, onReviewFormChange, onSubmitReview, onCancel }) {
   const intl = useIntl();
 
@@ -61,3 +64,5 @@ function ReviewForm({ reviewForm, submittingReview, onReviewFormChange, onSubmit
     </form>
   );
 }
+
+export default ReviewForm;

@@ -1,3 +1,6 @@
+import { Star } from 'iconsax-react';
+import { FormattedMessage } from 'react-intl';
+
 function ReviewsList({ reviews }) {
   return (
     <div className="reviews-list">
@@ -35,3 +38,5 @@ function ReviewsList({ reviews }) {
     </div>
   );
 }
+
+export default ReviewsList;

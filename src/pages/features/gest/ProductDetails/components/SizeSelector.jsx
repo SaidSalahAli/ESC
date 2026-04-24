@@ -30,19 +30,9 @@ export default function SizeSelector({ sizes, selectedSize, selectedColor, onSiz
                 className={`size-option ${isSelected ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
                 title={`${size.value}${isAvailable ? ` - ${stockCount} متوفر` : ' - غير متوفر'}`}
                 disabled={!isAvailable}
-                style={{
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '6px',
-                  border: isSelected ? '2px solid #1976d2' : '1px solid #ccc',
-                  backgroundColor: isSelected ? '#e3f2fd' : '#fff',
-                  cursor: isAvailable ? 'pointer' : 'not-allowed',
-                  opacity: isAvailable ? 1 : 0.5,
-                  fontWeight: isSelected ? 600 : 400,
-                  transition: 'all 0.2s ease'
-                }}
+                type="button"
               >
-                <span>{size.value}</span>
-                {!isAvailable && <span style={{ fontSize: '0.75rem', marginLeft: '4px', color: '#999' }}>(غير متوفر)</span>}
+                {size.value}
               </button>
             );
           })}

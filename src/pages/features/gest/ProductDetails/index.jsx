@@ -325,7 +325,19 @@ export default function ProductDetails() {
   // ==================== Cart Handlers ====================
 
   const handleAddToCart = async () => {
-    if (!product || addingToCart) return;
+    const success = await validateAndAddToCart();
+    return success;
+  };
+
+  const handleBuyNow = async () => {
+    const success = await validateAndAddToCart();
+    if (success) {
+      navigate('/checkout');
+    }
+  };
+
+  const validateAndAddToCart = async () => {
+    if (!product || addingToCart) return false;
 
     const hasSizeVariants = product.variants?.size && product.variants.size.length > 0;
     const hasColorVariants = product.variants?.color && product.variants.color.length > 0;
@@ -337,7 +349,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
-      return;
+      return false;
     }
 
     if (hasColorVariants && !selectedColor) {
@@ -347,7 +359,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
-      return;
+      return false;
     }
 
     const currentStock = getCurrentStock();
@@ -359,7 +371,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
-      return;
+      return false;
     }
 
     if (qty > currentStock) {
@@ -369,7 +381,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
-      return;
+      return false;
     }
 
     const { variantId, variantData } = findVariantId(hasSizeVariants, hasColorVariants);
@@ -381,13 +393,13 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
-      return;
+      return false;
     }
 
     if (!isLoggedIn) {
-      await addToGuestCartHandler(variantId, variantData);
+      return await addToGuestCartHandler(variantId, variantData);
     } else {
-      await addToLoggedInCartHandler(variantId);
+      return await addToLoggedInCartHandler(variantId);
     }
   };
 
@@ -471,6 +483,7 @@ export default function ProductDetails() {
 
       setTimeout(() => setAddedMsg(''), 2500);
       window.dispatchEvent(new Event('cartUpdated'));
+      return true;
     } catch (err) {
       console.error('Error adding to guest cart:', err);
       openSnackbar({
@@ -479,6 +492,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
+      return false;
     } finally {
       setAddingToCart(false);
     }
@@ -503,6 +517,7 @@ export default function ProductDetails() {
 
         setTimeout(() => setAddedMsg(''), 2500);
         window.dispatchEvent(new Event('cartUpdated'));
+        return true;
       } else {
         throw new Error(response.message || 'Failed to add to cart');
       }
@@ -514,6 +529,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'error' }
       });
+      return false;
     } finally {
       setAddingToCart(false);
     }
@@ -665,14 +681,13 @@ export default function ProductDetails() {
               onColorChange={handleColorChange}
               onQtyChange={handleQtyChange}
               onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
               getCurrentStock={getCurrentStock}
               getStockFromCombination={(size, color) => getStockFromCombination(product, size, color)}
               getAvailableColorsForSize={(size) => getAvailableColorsForSize(size, product)}
               getAvailableSizesForColor={(color) => getAvailableSizesForColor(color, product)}
             />
           </div>
-
-          {/* Reviews Section */}
           <ReviewsSection
             reviews={reviews}
             reviewStats={reviewStats}
@@ -685,6 +700,7 @@ export default function ProductDetails() {
             onReviewFormChange={setReviewForm}
             onSubmitReview={handleSubmitReview}
           />
+          {/* Reviews Section */}
         </div>
       </div>
     </>
