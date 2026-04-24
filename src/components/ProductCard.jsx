@@ -1,275 +1,260 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cartService } from 'api/cart';
 import useAuth from 'hooks/useAuth';
 import { addToGuestCart } from 'utils/guestCart';
 import { openSnackbar } from 'api/snackbar';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { useIntl } from 'react-intl';
 import { getImageUrl, cleanImagePath } from 'utils/imageHelper';
-import { Box, Card, Typography, Rating } from '@mui/material';
+import { Box, Card, Typography } from '@mui/material';
 
-function ProductCard({ item, addToCart, onQuickView }) {
+function ProductCard({ item, addToCart }) {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
   const intl = useIntl();
 
-  const [images, setImages] = useState([]);
-  const [hoveredImageIndex, setHoveredImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [selectedSize, setSelectedSize] = useState(null);
+  const [hoveredColor, setHoveredColor] = useState(null); // اللون اللي الماوس عليه
+  const [selectedColor, setSelectedColor] = useState(null); // اللون المختار بالكليك
   const [addingToCart, setAddingToCart] = useState(false);
 
-  // Process images from item data (no need for additional API call)
-  useEffect(() => {
-    if (!item?.id) return;
-
-    const productImages = [];
+  /* ─── بناء قائمة الصور ─── */
+  const allImages = useMemo(() => {
+    const imgs = [];
     if (item.main_image) {
-      productImages.push(getImageUrl(item.main_image));
+      imgs.push({ url: getImageUrl(item.main_image), color_value: null });
     }
-    if (item.images && Array.isArray(item.images)) {
+    if (item.images?.length) {
       item.images.forEach((img) => {
         if (img.image_url) {
-          productImages.push(getImageUrl(img.image_url));
-        }
-      });
-    }
-    if (productImages.length === 1) {
-      productImages.push(productImages[0]);
-    }
-    setImages(productImages.length > 0 ? productImages : [item.image, item.image]);
-  }, [item?.id, item?.main_image, item?.images, item?.image]);
-
-  const handleCardClick = (e) => {
-    if (e.target.closest('.size-btn') || e.target.closest('.card-btn')) return;
-    if (item.id) navigate(`/products/${item.id}`);
-  };
-
-  const handleAddToCartWithVariant = async (variantId, sizeValue) => {
-    if (addingToCart) return;
-    setAddingToCart(true);
-
-    try {
-      let variantName = 'Size';
-      if (item && item.variants) {
-        const hasSize = item.variants.size && item.variants.size.length > 0;
-        const hasColor = item.variants.color && item.variants.color.length > 0;
-        if (hasColor && !hasSize) variantName = 'Color';
-        else if (hasSize && hasColor) variantName = 'Color / Size';
-      }
-
-      if (!isLoggedIn) {
-        addToGuestCart(item.id, 1, variantId, {
-          name: item.name,
-          price: item.price,
-          sale_price: item.sale_price || null,
-          main_image: images[0] ? cleanImagePath(images[0]) : null,
-          variant_name: variantName,
-          variant_value: sizeValue
-        });
-        openSnackbar({ open: true, message: intl.formatMessage({ id: 'item-added-cart' }), variant: 'alert', alert: { color: 'success' } });
-        window.dispatchEvent(new Event('cartUpdated'));
-      } else {
-        const response = await cartService.addToCart(item.id, 1, variantId);
-        if (response.success) {
-          openSnackbar({
-            open: true,
-            message: intl.formatMessage({ id: 'item-added-success' }),
-            variant: 'alert',
-            alert: { color: 'success' }
+          imgs.push({
+            url: getImageUrl(img.image_url),
+            color_value: img.color_value || null
           });
-          window.dispatchEvent(new Event('cartUpdated'));
-        } else {
-          throw new Error(response.message || 'Failed to add to cart');
         }
-      }
-    } catch (err) {
-      console.error('Error adding to cart:', err);
-      openSnackbar({
-        open: true,
-        message: err.message || intl.formatMessage({ id: 'failed-add-cart' }),
-        variant: 'alert',
-        alert: { color: 'error' }
       });
-    } finally {
-      setAddingToCart(false);
     }
-  };
+    return imgs;
+  }, [item]);
 
-  const displayImages = images.length > 0 ? images : [item.image, item.image];
+  /* ─── الصور المعروضة بناءً على اللون النشط ─── */
+  const activeColor = hoveredColor ?? selectedColor; // hover يكسب على selected
 
+  const displayImages = useMemo(() => {
+    if (!activeColor) {
+      // بدون لون مختار: main_image + أول صورة إضافية
+      const fallback = allImages.length > 0 ? allImages : [{ url: item.image }, { url: item.image }];
+      return fallback.length === 1 ? [fallback[0], fallback[0]] : fallback.slice(0, 2);
+    }
+
+    // فلتر الصور اللي color_value بتاعها = activeColor
+    const colorImgs = allImages.filter((img) => img.color_value === activeColor);
+
+    if (colorImgs.length === 0) {
+      // مفيش صور للون ده، ارجع للافتراضي
+      return allImages.slice(0, 2);
+    }
+    if (colorImgs.length === 1) {
+      return [colorImgs[0], colorImgs[0]];
+    }
+    return colorImgs.slice(0, 2);
+  }, [activeColor, allImages, item.image]);
+
+  /* ─── قائمة الألوان الفريدة من images ─── */
+  const colorList = useMemo(() => {
+    const seen = new Set();
+    const colors = [];
+    allImages.forEach((img) => {
+      if (img.color_value && !seen.has(img.color_value)) {
+        seen.add(img.color_value);
+        colors.push(img.color_value);
+      }
+    });
+    return colors;
+  }, [allImages]);
+
+  /* ─── خصم ─── */
+  const discountPercent = item.sale_price && item.price ? Math.round(((item.price - item.sale_price) / item.price) * 100) : null;
+
+  /* ─── stock ─── */
   const getCardStock = () => {
     try {
-      if (item && item.variants && Array.isArray(item.variants.combination) && item.variants.combination.length > 0) {
-        const anyInStock = item.variants.combination.some((c) => (Number(c.stock_quantity) || 0) > 0);
-        return anyInStock ? 1 : 0;
+      if (item.variants?.combination?.length > 0) {
+        return item.variants.combination.some((c) => (Number(c.stock_quantity) || 0) > 0) ? 1 : 0;
       }
       return Number(item?.stock_quantity ?? 0);
-    } catch (err) {
+    } catch {
       return Number(item?.stock_quantity ?? 0);
     }
   };
-
   const cardStock = getCardStock();
+
+  const handleCardClick = (e) => {
+    if (e.target.closest('.card-btn') || e.target.closest('.swatch-btn')) return;
+    if (item.id) navigate(`/products/${item.id}`);
+  };
 
   return (
     <Card
       onClick={handleCardClick}
-      onMouseEnter={() => {
-        setIsHovered(true);
-        setHoveredImageIndex(1);
-      }}
+      onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        setHoveredImageIndex(0);
+        setHoveredColor(null); // reset hover color عند مغادرة الكارد
       }}
       elevation={0}
       sx={{
-        border: '1px solid rgba(11, 18, 19, 0.06)',
-        // borderRadius: 2,
+        border: 'none',
+        borderRadius: 0,
         overflow: 'hidden',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        transition: 'transform 0.22s ease, box-shadow 0.22s ease',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.10)'
-        }
+        background: 'transparent'
       }}
     >
-      {/* ── Image Container ── */}
+      {/* ── Image ── */}
       <Box
-        aria-hidden="true"
         sx={{
           position: 'relative',
           width: '100%',
-          height: { xs: 350, md: 340 },
-          flexShrink: 0,
+          aspectRatio: '3/4',
           overflow: 'hidden',
-          background: 'radial-gradient(circle at top, #0b5751 0%, #0b1213 60%)'
+          bgcolor: '#c8c8c8',
+          flexShrink: 0
         }}
       >
-        {/* Image Wrapper */}
-        <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-          {displayImages.map((img, index) => (
-            <Box
-              key={index}
-              component="img"
-              src={img}
-              alt={item.name}
-              loading={index === 0 ? 'eager' : 'lazy'}
-              decoding="async"
-              onError={(e) => {
-                e.currentTarget.src = item.image || 'https://via.placeholder.com/300x300?text=Product';
-              }}
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'top',
-                opacity: index === hoveredImageIndex ? 1 : 0,
-                transform: index === hoveredImageIndex ? 'scale(1)' : 'scale(1.03)',
-                transition: 'opacity 0.4s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            />
-          ))}
+        {/* Discount badge */}
+        {discountPercent && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              zIndex: 2,
+              bgcolor: '#cc1111',
+              color: '#fff',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              px: 0.75,
+              py: '2px',
+              borderRadius: '3px',
+              letterSpacing: '0.5px'
+            }}
+          >
+            {discountPercent}%
+          </Box>
+        )}
 
-          {/* Stock */}
-          {cardStock === 0 && (
-            <Typography
-              sx={{
-                position: 'absolute',
-                margin: '10px',
-                fontSize: '0.85rem',
-                backgroundColor: 'red',
-                display: 'flex',
-                px: 1.5,
-                color: 'white',
-                mt: 0.25
-              }}
-            >
-              Out of stock
-            </Typography>
-          )}
-        </Box>
+        {/* Out of stock */}
+        {cardStock === 0 && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              zIndex: 2,
+              bgcolor: 'rgba(0,0,0,0.7)',
+              color: '#fff',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              px: 1,
+              py: '3px',
+              letterSpacing: '0.5px'
+            }}
+          >
+            Out of stock
+          </Box>
+        )}
+
+        {/* Images — front & back */}
+        {displayImages.map((img, i) => (
+          <Box
+            key={`${activeColor}-${i}`}
+            component="img"
+            src={img.url}
+            alt={item.name}
+            loading={i === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.src = 'https://via.placeholder.com/300x400?text=Product';
+            }}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'top',
+              opacity: (i === 0) === !isHovered ? 1 : 0,
+              transform: (i === 0) === !isHovered ? 'scale(1)' : 'scale(1.04)',
+              transition: 'opacity 0.4s ease, transform 0.4s ease'
+            }}
+          />
+        ))}
       </Box>
 
-      {/* ── Content ── */}
-      <Box
-        sx={{
-          p: { xs: '0.8rem 0.9rem 1rem', md: '0.9rem 1.1rem 1.25rem' },
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 0.5,
-          flex: '1 1 auto'
-        }}
-      >
+      {/* ── Body ── */}
+      <Box sx={{ pt: 1.25, pb: 1.75, px: 0.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+        {/* Color Swatches */}
+        {colorList.length > 0 && (
+          <Box sx={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+            {colorList.map((colorVal) => (
+              <Box
+                key={colorVal}
+                className="swatch-btn"
+                title={colorVal}
+                onMouseEnter={() => setHoveredColor(colorVal)}
+                onMouseLeave={() => setHoveredColor(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedColor((prev) => (prev === colorVal ? null : colorVal));
+                }}
+                sx={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  bgcolor: colorVal, // CSS color name مثل "black", "red"
+                  outline: selectedColor === colorVal ? '2px solid rgba(0,0,0,0.6)' : '1.5px solid rgba(0,0,0,0.18)',
+                  outlineOffset: selectedColor === colorVal ? '1.5px' : '0px',
+                  cursor: 'pointer',
+                  transition: 'outline 0.15s, outline-offset 0.15s',
+                  '&:hover': {
+                    outline: '2px solid rgba(0,0,0,0.45)',
+                    outlineOffset: '1.5px'
+                  }
+                }}
+              />
+            ))}
+          </Box>
+        )}
+
         {/* Name */}
         <Typography
           sx={{
-            fontWeight: 600,
-            fontSize: { xs: '0.95rem', md: '0.98rem' },
-            lineHeight: 1.4,
-            color: 'text.primary'
+            fontFamily: '"Barlow Condensed", "Roboto Condensed", sans-serif',
+            fontSize: '0.78rem',
+            fontWeight: 500,
+            letterSpacing: '1.1px',
+            textTransform: 'uppercase',
+            color: 'text.primary',
+            lineHeight: 1.3
           }}
         >
           {item.name}
         </Typography>
 
-        {/* Category tag */}
-        <Box
-          component="span"
-          sx={{
-            display: 'inline-block',
-            alignSelf: 'flex-start',
-            // px: 1,
-            py: '2px',
-            // borderRadius: '999px',
-            fontSize: '0.7rem',
-            fontWeight: 500,
-            // bgcolor: 'rgba(74, 175, 163, 0.08)',
-            color: '#0b5751'
-          }}
-        >
-          {item.category}
-        </Box>
-
-        {/* Rating */}
-        {item.reviews?.total_reviews > 0 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Rating value={item.reviews?.average_rating} readOnly size="small" precision={0.5} />
-            <Typography variant="caption" color="text.secondary">
-              ({item.reviews.total_reviews})
-            </Typography>
-          </Box>
-        )}
-
         {/* Price */}
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mt: 0.25 }}>
-          <Typography
-            sx={{
-              fontWeight: 700,
-              fontSize: { xs: '1rem', md: '1.05rem' },
-              color: '#c0392b'
-            }}
-          >
-            {item.sale_price || item.price} EGP
-          </Typography>
-          {item.sale_price && item.price && (
-            <Typography
-              sx={{
-                fontSize: '0.85rem',
-                color: 'text.disabled',
-                textDecoration: 'line-through'
-              }}
-            >
-              {item.price} EGP
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+          {item.sale_price && (
+            <Typography sx={{ fontSize: '0.78rem', color: 'text.disabled', textDecoration: 'line-through' }}>
+              EGP {Number(item.price).toLocaleString()}
             </Typography>
           )}
+          <Typography sx={{ fontSize: '0.82rem', fontWeight: 500, color: 'text.primary' }}>
+            EGP {Number(item.sale_price || item.price).toLocaleString()}
+          </Typography>
         </Box>
       </Box>
     </Card>

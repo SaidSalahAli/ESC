@@ -683,8 +683,7 @@ export default function CartDrawer({ open, onClose }) {
                 onClick={proceedToCheckout}
                 sx={{
                   background: '#ffff',
-                  borderRadius: '8px',
-                  py: 1.5,
+                  py: 1.5,  
                   fontWeight: 700,
                   textTransform: 'none',
                   color: '#0a4834',
