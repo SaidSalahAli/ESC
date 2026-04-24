@@ -62,14 +62,21 @@ export default function Featured() {
         name_ar: product.name_ar,
         category: product.category?.name || 'Other',
         price: Number(product.price) || 0,
-        sale_price: product.sale_price || null,
+        sale_price: product.sale_price ? Number(product.sale_price) : null,
+
+        has_discount: Boolean(product.has_discount || (product.sale_price && Number(product.sale_price) < Number(product.price))),
+        discount_percent:
+          product.discount_percent ||
+          (product.sale_price && product.price
+            ? Math.round(((Number(product.price) - Number(product.sale_price)) / Number(product.price)) * 100)
+            : 0),
+
         image: product.main_image ? getImageUrl(product.main_image) : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
         main_image: product.main_image,
         description: product.description || product.short_description || product.description_ar || '',
         slug: product.slug,
         is_featured: product.is_featured,
         reviews: product.reviews || { average_rating: 0, total_reviews: 0 },
-        // Keep full product data for variants and images
         variants: product.variants || { size: [], color: [], combination: [] },
         images: product.images || [],
         stock_quantity: product.stock_quantity

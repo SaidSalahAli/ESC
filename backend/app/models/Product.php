@@ -19,6 +19,11 @@ class Product extends Model
         'short_description',
         'price',
         'sale_price',
+        'discount_type',
+        'discount_value',
+        'discount_start_at',
+        'discount_end_at',
+        'is_discount_active',
         'sku',
         'barcode',
         'stock_quantity',
@@ -605,5 +610,96 @@ class Product extends Model
             error_log("Error returning to stock: " . $e->getMessage());
             return false;
         }
+    }
+    public function validateDiscountData(array $data)
+    {
+        $errors = [];
+
+        $price = isset($data['price']) ? (float)$data['price'] : 0;
+        $isActive = isset($data['is_discount_active']) && (int)$data['is_discount_active'] === 1;
+        $type = $data['discount_type'] ?? 'none';
+        $value = isset($data['discount_value']) && $data['discount_value'] !== '' ? (float)$data['discount_value'] : 0;
+
+        if (!$isActive || $type === 'none') {
+            return [];
+        }
+
+        if (!in_array($type, ['percentage', 'fixed'], true)) {
+            $errors['discount_type'][] = 'Invalid discount type.';
+        }
+
+        if ($value <= 0) {
+            $errors['discount_value'][] = 'Discount value must be greater than zero.';
+        }
+
+        if ($type === 'percentage' && $value > 100) {
+            $errors['discount_value'][] = 'Percentage discount must be less than or equal to 100.';
+        }
+
+        if ($type === 'fixed' && $value >= $price) {
+            $errors['discount_value'][] = 'Fixed discount must be less than product price.';
+        }
+
+        if (!empty($data['discount_start_at']) && !empty($data['discount_end_at'])) {
+            if (strtotime($data['discount_end_at']) <= strtotime($data['discount_start_at'])) {
+                $errors['discount_end_at'][] = 'Discount end date must be after start date.';
+            }
+        }
+
+        return $errors;
+    }
+
+    public function prepareDiscountData(array $data)
+    {
+        $isActive = isset($data['is_discount_active']) && (int)$data['is_discount_active'] === 1;
+
+        $data['is_discount_active'] = $isActive ? 1 : 0;
+        $data['discount_type'] = $isActive ? ($data['discount_type'] ?? 'none') : 'none';
+        $data['discount_value'] = $isActive && isset($data['discount_value']) && $data['discount_value'] !== ''
+            ? (float)$data['discount_value']
+            : null;
+
+        $data['discount_start_at'] = !empty($data['discount_start_at']) ? $data['discount_start_at'] : null;
+        $data['discount_end_at'] = !empty($data['discount_end_at']) ? $data['discount_end_at'] : null;
+
+        $data = $this->applyDiscountMeta($data);
+
+        return $data;
+    }
+    public function applyDiscountMeta(array $product)
+    {
+        $price = isset($product['price']) ? (float)$product['price'] : 0;
+        $salePrice = null;
+
+        $isActive = isset($product['is_discount_active']) && (int)$product['is_discount_active'] === 1;
+        $discountType = $product['discount_type'] ?? 'none';
+        $discountValue = isset($product['discount_value']) ? (float)$product['discount_value'] : 0;
+
+        $now = time();
+
+        $startOk = empty($product['discount_start_at']) || strtotime($product['discount_start_at']) <= $now;
+        $endOk = empty($product['discount_end_at']) || strtotime($product['discount_end_at']) >= $now;
+
+        if ($isActive && $price > 0 && $discountValue > 0 && $startOk && $endOk) {
+            if ($discountType === 'percentage') {
+                $salePrice = $price - ($price * $discountValue / 100);
+            } elseif ($discountType === 'fixed') {
+                $salePrice = $price - $discountValue;
+            }
+        }
+
+        if ($salePrice !== null) {
+            $salePrice = max(round($salePrice, 2), 0);
+        }
+
+        $product['sale_price'] = ($salePrice !== null && $salePrice < $price) ? $salePrice : null;
+
+        $product['has_discount'] = $product['sale_price'] !== null;
+
+        $product['discount_percent'] = $product['has_discount']
+            ? (int) round((($price - (float)$product['sale_price']) / $price) * 100)
+            : 0;
+
+        return $product;
     }
 }

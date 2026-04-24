@@ -1,17 +1,26 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIntl } from 'react-intl';
-import { Star } from 'iconsax-react';
+import { Star, Add } from 'iconsax-react';
 import { getImageUrl } from 'utils/imageHelper';
-import { Box, Card, Typography } from '@mui/material';
+import { Box, Card, Typography, IconButton } from '@mui/material';
 
 function ProductCard({ item }) {
   const navigate = useNavigate();
-  const intl = useIntl();
 
   const [isHovered, setIsHovered] = useState(false);
   const [hoveredColor, setHoveredColor] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
+
+  const price = Number(item.price || 0);
+  const salePrice = item.sale_price ? Number(item.sale_price) : null;
+
+  const hasDiscount = Boolean(item.has_discount || (salePrice && price && salePrice < price));
+
+  const discountPercent = hasDiscount
+    ? item.discount_percent
+      ? Number(item.discount_percent)
+      : Math.round(((price - salePrice) / price) * 100)
+    : null;
 
   const allImages = useMemo(() => {
     const imgs = [];
@@ -40,15 +49,15 @@ function ProductCard({ item }) {
   const activeColor = hoveredColor ?? selectedColor;
 
   const displayImages = useMemo(() => {
+    const fallback = allImages.length > 0 ? allImages : [{ url: item.image }, { url: item.image }];
+
     if (!activeColor) {
-      const fallback = allImages.length > 0 ? allImages : [{ url: item.image }, { url: item.image }];
       return fallback.length === 1 ? [fallback[0], fallback[0]] : fallback.slice(0, 2);
     }
 
     const colorImgs = allImages.filter((img) => img.color_value === activeColor);
 
     if (colorImgs.length === 0) {
-      const fallback = allImages.length > 0 ? allImages : [{ url: item.image }, { url: item.image }];
       return fallback.length === 1 ? [fallback[0], fallback[0]] : fallback.slice(0, 2);
     }
 
@@ -71,9 +80,6 @@ function ProductCard({ item }) {
     }, []);
   }, [allImages]);
 
-  const discountPercent =
-    item.sale_price && item.price ? Math.round(((Number(item.price) - Number(item.sale_price)) / Number(item.price)) * 100) : null;
-
   const rating = Number(item?.reviews?.average_rating || 0);
   const totalReviews = Number(item?.reviews?.total_reviews || 0);
 
@@ -92,7 +98,7 @@ function ProductCard({ item }) {
   const cardStock = getCardStock();
 
   const handleCardClick = (e) => {
-    if (e.target.closest('.card-btn') || e.target.closest('.swatch-btn')) return;
+    if (e.target.closest('.swatch-btn') || e.target.closest('.quick-add-btn')) return;
     if (item.id) navigate(`/products/${item.id}`);
   };
 
@@ -108,7 +114,7 @@ function ProductCard({ item }) {
       sx={{
         border: 'none',
         borderRadius: 0,
-        overflow: 'hidden',
+        overflow: 'visible',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -130,20 +136,33 @@ function ProductCard({ item }) {
           <Box
             sx={{
               position: 'absolute',
-              top: 10,
-              left: 10,
-              zIndex: 2,
-              bgcolor: '#cc1111',
-              color: '#fff',
-              fontSize: '0.7rem',
-              fontWeight: 700,
-              px: 0.75,
-              py: '2px',
-              borderRadius: '3px',
-              letterSpacing: '0.5px'
+              top: 0,
+              left: 0,
+              zIndex: 5,
+              width: 115,
+              height: 115,
+              overflow: 'hidden'
             }}
           >
-            {discountPercent}% OFF
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 20,
+                left: -45,
+                width: 165,
+                bgcolor: '#c8102e',
+                color: '#fff',
+                transform: 'rotate(-45deg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                fontWeight: 800,
+                letterSpacing: '2px'
+              }}
+            >
+              {discountPercent}%
+            </Box>
           </Box>
         )}
 
@@ -151,15 +170,15 @@ function ProductCard({ item }) {
           <Box
             sx={{
               position: 'absolute',
-              top: 10,
-              right: 10,
-              zIndex: 2,
-              bgcolor: 'rgba(0,0,0,0.7)',
+              top: 12,
+              right: 12,
+              zIndex: 5,
+              bgcolor: 'rgba(0,0,0,0.75)',
               color: '#fff',
-              fontSize: '0.7rem',
+              fontSize: '0.75rem',
               fontWeight: 600,
               px: 1,
-              py: '3px',
+              py: '4px',
               letterSpacing: '0.5px'
             }}
           >

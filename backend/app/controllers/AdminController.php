@@ -397,6 +397,7 @@ class AdminController
 
             // Add variants with SKU and barcode to each product
             foreach ($products as &$product) {
+                $product = $this->productModel->applyDiscountMeta($product);
                 $variants = $this->variantModel->getByProductId($product['id']);
                 $product['variants'] = $variants;
 
@@ -440,6 +441,13 @@ class AdminController
 
         try {
             $data = $request->all();
+
+            $discountErrors = $this->productModel->validateDiscountData($data);
+            if (!empty($discountErrors)) {
+                return Response::validationError($discountErrors);
+            }
+
+            $data = $this->productModel->prepareDiscountData($data);
 
             // Convert string '1'/'0' to boolean for is_active and is_featured
             if (isset($data['is_active'])) {
@@ -491,6 +499,7 @@ class AdminController
             $this->handleProductImages($productId, $request);
 
             $product = $this->productModel->find($productId);
+            $product = $this->productModel->applyDiscountMeta($product);
             $product['variants'] = $this->variantModel->getGroupedByProductId($productId);
             $product['images'] = $this->imageModel->getByProductId($productId);
 
@@ -513,6 +522,45 @@ class AdminController
             }
 
             $data = $request->all();
+
+            $mergedDataForDiscount = array_merge($product, $data);
+            $discountErrors = $this->productModel->validateDiscountData($mergedDataForDiscount);
+            if (!empty($discountErrors)) {
+                return Response::validationError($discountErrors);
+            }
+
+            $data = $this->productModel->prepareDiscountData($mergedDataForDiscount);
+
+            $allowedUpdateKeys = [
+                'name',
+                'name_ar',
+                'slug',
+                'description',
+                'description_ar',
+                'short_description',
+                'price',
+                'sale_price',
+                'discount_type',
+                'discount_value',
+                'discount_start_at',
+                'discount_end_at',
+                'is_discount_active',
+                'sku',
+                'barcode',
+                'stock_quantity',
+                'category_id',
+                'brand',
+                'brand_ar',
+                'main_image',
+                'is_featured',
+                'is_active',
+                'weight',
+                'dimensions',
+                'meta_title',
+                'meta_description'
+            ];
+
+            $data = array_intersect_key($data, array_flip($allowedUpdateKeys));
 
             // Remove main_image from data if it's not being updated (to avoid "Array" issue)
             if (isset($data['main_image']) && !isset($_FILES['main_image'])) {
@@ -549,6 +597,7 @@ class AdminController
             $this->handleProductImages($productId, $request);
 
             $updatedProduct = $this->productModel->find($productId);
+            $updatedProduct = $this->productModel->applyDiscountMeta($updatedProduct);
             $updatedProduct['variants'] = $this->variantModel->getGroupedByProductId($productId);
             $updatedProduct['images'] = $this->imageModel->getByProductId($productId);
 

@@ -245,6 +245,11 @@ export default function ProductsList() {
     description: '',
     description_ar: '',
     price: '',
+    discount_type: 'none',
+    discount_value: '',
+    discount_start_at: '',
+    discount_end_at: '',
+    is_discount_active: false,
     category_id: '',
     stock_quantity: '',
     is_active: true,
@@ -342,6 +347,11 @@ export default function ProductsList() {
         description: product.description || '',
         description_ar: product.description_ar || '',
         price: product.price || '',
+        discount_type: product.discount_type || 'none',
+        discount_value: product.discount_value || '',
+        discount_start_at: product.discount_start_at ? product.discount_start_at.replace(' ', 'T').slice(0, 16) : '',
+        discount_end_at: product.discount_end_at ? product.discount_end_at.replace(' ', 'T').slice(0, 16) : '',
+        is_discount_active: product.is_discount_active == 1 || product.is_discount_active === true,
         category_id: product.category_id || '',
         stock_quantity: product.stock_quantity || '',
         is_active: product.is_active == 1 || product.is_active === true,
@@ -383,6 +393,11 @@ export default function ProductsList() {
         description: '',
         description_ar: '',
         price: '',
+        discount_type: 'none',
+        discount_value: '',
+        discount_start_at: '',
+        discount_end_at: '',
+        is_discount_active: false,
         category_id: categories.length > 0 ? categories[0].id : '',
         stock_quantity: '',
         is_active: true,
@@ -602,6 +617,36 @@ export default function ProductsList() {
     }
   };
 
+  const getDiscountPreview = () => {
+    const price = Number(formData.price) || 0;
+    const discountValue = Number(formData.discount_value) || 0;
+    const enabled = Boolean(formData.is_discount_active) && formData.discount_type !== 'none' && price > 0 && discountValue > 0;
+
+    if (!enabled) {
+      return {
+        enabled: false,
+        originalPrice: price,
+        discountAmount: 0,
+        salePrice: price,
+        discountPercent: 0
+      };
+    }
+
+    const discountAmount = formData.discount_type === 'percentage' ? price * (discountValue / 100) : discountValue;
+    const salePrice = Math.max(price - discountAmount, 0);
+    const discountPercent = price > 0 ? Math.round(((price - salePrice) / price) * 100) : 0;
+
+    return {
+      enabled: true,
+      originalPrice: price,
+      discountAmount,
+      salePrice,
+      discountPercent
+    };
+  };
+
+  const discountPreview = getDiscountPreview();
+
   if (loading && products.length === 0) return <Typography>Loading...</Typography>;
 
   return (
@@ -662,7 +707,19 @@ export default function ProductsList() {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="subtitle2">{product.price} EGP</Typography>
+                          {product.has_discount ? (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
+                                {Number(product.price).toLocaleString()} EGP
+                              </Typography>
+                              <Typography variant="subtitle2" color="error.main">
+                                {Number(product.sale_price).toLocaleString()} EGP
+                              </Typography>
+                              <Chip label={`${product.discount_percent}% OFF`} color="error" size="small" sx={{ mt: 0.5 }} />
+                            </Box>
+                          ) : (
+                            <Typography variant="subtitle2">{Number(product.price).toLocaleString()} EGP</Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -812,6 +869,94 @@ export default function ProductsList() {
                 helperText="يتم احتساب المخزون تلقائيًا من المقاسات / الألوان"
               />
             </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Discount
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={<Switch checked={formData.is_discount_active} onChange={handleInputChange} name="is_discount_active" />}
+                      label="Enable Discount"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Discount Type"
+                      name="discount_type"
+                      value={formData.discount_type}
+                      onChange={handleInputChange}
+                      disabled={!formData.is_discount_active}
+                    >
+                      <MenuItem value="none">None</MenuItem>
+                      <MenuItem value="percentage">Percentage (%)</MenuItem>
+                      <MenuItem value="fixed">Fixed Amount (EGP)</MenuItem>
+                    </TextField>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Discount Value"
+                      name="discount_value"
+                      value={formData.discount_value}
+                      onChange={handleInputChange}
+                      disabled={!formData.is_discount_active || formData.discount_type === 'none'}
+                      inputProps={{ min: 0, step: '0.01' }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="datetime-local"
+                      label="Start Date"
+                      name="discount_start_at"
+                      value={formData.discount_start_at}
+                      onChange={handleInputChange}
+                      disabled={!formData.is_discount_active}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="datetime-local"
+                      label="End Date"
+                      name="discount_end_at"
+                      value={formData.discount_end_at}
+                      onChange={handleInputChange}
+                      disabled={!formData.is_discount_active}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Box sx={{ border: '1px dashed #ccc', borderRadius: 1, p: 2, bgcolor: '#fff' }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        Live Preview
+                      </Typography>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                        <Typography variant="body2">Original: {discountPreview.originalPrice.toLocaleString()} EGP</Typography>
+                        <Typography variant="body2">Discount: {discountPreview.discountAmount.toLocaleString()} EGP</Typography>
+                        <Typography variant="body2" fontWeight="bold">
+                          Final: {discountPreview.salePrice.toLocaleString()} EGP
+                        </Typography>
+                        {discountPreview.enabled && <Chip label={`${discountPreview.discountPercent}% OFF`} color="error" size="small" />}
+                      </Stack>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            </Grid>
+
             <Grid item xs={12}>
               <TextField
                 select
