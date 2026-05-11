@@ -5,7 +5,7 @@ import ProductCard from 'components/ProductCard';
 import { productsService } from 'api';
 import { getImageUrl } from 'utils/imageHelper';
 
-import ProfileImg from 'assets/images/homepage/5.jpg';
+import ProfileImg from 'assets/images/homepage/5.webp';
 
 import Card1 from 'assets/So_photos/Card_1.jpg';
 import Card2 from 'assets/So_photos/Card_2.jpg';
@@ -41,7 +41,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 const FALLBACK_IMAGES = [Card1, Card2, Card3, Card4, Card5, Card6];
 const LIMIT = 20;
-const DEFAULT_MAX_PRICE = 5000;
+const DEFAULT_MAX_PRICE = 1000;
 
 const SORT_OPTIONS = [
   { value: 'created_at_DESC', label: 'Newest' },
@@ -113,12 +113,23 @@ export default function Collections() {
 
         const image = product.main_image ? getImageUrl(product.main_image) : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length];
 
+        // Calculate discounted price
+        let calculatedSalePrice = product.sale_price || null;
+        if (product.is_discount_active && !calculatedSalePrice && product.discount_type && product.discount_value) {
+          const basePrice = Number(product.price) || 0;
+          if (product.discount_type === 'fixed') {
+            calculatedSalePrice = Math.max(0, basePrice - Number(product.discount_value));
+          } else if (product.discount_type === 'percentage') {
+            calculatedSalePrice = Math.max(0, basePrice - (basePrice * Number(product.discount_value)) / 100);
+          }
+        }
+
         return {
           id: String(product.id),
           name: product.name,
           name_ar: product.name_ar,
           price: Number(product.price) || 0,
-          sale_price: product.sale_price || null,
+          sale_price: calculatedSalePrice ? Number(calculatedSalePrice) : null,
           image,
           category: categoryName,
           category_id: product.category_id,
@@ -128,7 +139,14 @@ export default function Collections() {
           stock_quantity: product.stock_quantity,
           images: product.images || [],
           variants: product.variants || { size: [], color: [], combination: [] },
-          reviews: product.reviews || { average_rating: 0, total_reviews: 0 }
+          reviews: product.reviews || { average_rating: 0, total_reviews: 0 },
+          // Add discount fields
+          is_discount_active: product.is_discount_active || 0,
+          discount_type: product.discount_type || 'none',
+          discount_value: product.discount_value || null,
+          discount_start_at: product.discount_start_at || null,
+          discount_end_at: product.discount_end_at || null,
+          has_discount: product.is_discount_active && (calculatedSalePrice ? Number(calculatedSalePrice) < Number(product.price) : false)
         };
       });
     },

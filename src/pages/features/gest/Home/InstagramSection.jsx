@@ -7,11 +7,11 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 
-import img1 from 'assets/images/homepage/5.jpg';
-import img2 from 'assets/images/homepage/6.jpg';
-import img3 from 'assets/images/homepage/7.jpg';
-import img4 from 'assets/images/homepage/8.jpg';
-import img5 from 'assets/images/homepage/9.jpg';
+import img1 from 'assets/images/homepage/5.webp';
+import img2 from 'assets/images/homepage/6.webp';
+import img3 from 'assets/images/homepage/7.webp';
+import img4 from 'assets/images/homepage/8.webp';
+import img5 from 'assets/images/homepage/9.webp';
 
 import { Add } from 'iconsax-react';
 import { FormattedMessage } from 'react-intl';

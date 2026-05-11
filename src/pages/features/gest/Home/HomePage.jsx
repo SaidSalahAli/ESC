@@ -6,10 +6,8 @@ import ReviewsSection from './ReviewsSection';
 import SEO from 'components/SEO';
 import Featured from './Featured';
 import HomeCategoriesSection from './HomeCategoriesSection';
-import img4 from 'assets/images/homepage/4.jpg';
 import InstagramSection from './InstagramSection.jsx';
 import ScrollReveal from 'components/ScrollReveal';
-import StorySection from './StorySection.jsx';
 function HomePage() {
   const structuredData = {
     '@context': 'https://schema.org',

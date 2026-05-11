@@ -54,12 +54,7 @@
   <link rel="alternate" hreflang="ar" href="https://escwear.com/ar" />
   <link rel="alternate" hreflang="x-default" href="https://escwear.com/" />
 
-  <!-- Preconnect for Performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <!-- DNS Prefetch -->
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
 
   <!-- Structured Data - Organization -->
   <script type="application/ld+json">
@@ -98,7 +93,13 @@
   </script>
 
   <!-- this is to resolve issue in old safari browser in tablet -->
-  <script src="https://cdn.jsdelivr.net/npm/resize-observer-polyfill@1.5.1/dist/ResizeObserver.min.js"></script>
+  <script>
+    if (!window.ResizeObserver) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/resize-observer-polyfill@1.5.1/dist/ResizeObserver.min.js';
+      document.head.appendChild(script);
+    }
+  </script>
 </head>
 
 <body font-feature-settings="salt">

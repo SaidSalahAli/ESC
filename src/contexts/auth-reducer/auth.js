@@ -1,5 +1,5 @@
 // action - state management
-import { REGISTER, LOGIN, LOGOUT } from './actions';
+import { REGISTER, LOGIN, LOGOUT, INIT_COMPLETE } from './actions';
 
 // initial state
 const initialState = {
@@ -16,6 +16,8 @@ const auth = (state = initialState, action) => {
       const { user } = action.payload;
       return {
         ...state,
+        isLoggedIn: true,
+        isInitialized: true,
         user
       };
     }
@@ -34,6 +36,13 @@ const auth = (state = initialState, action) => {
         isInitialized: true,
         isLoggedIn: false,
         user: null
+      };
+    }
+    case INIT_COMPLETE: {
+      // Guarantee initialization is complete when no other action applies
+      return {
+        ...state,
+        isInitialized: true
       };
     }
     default: {

@@ -163,7 +163,7 @@ export default function Header() {
               {isLoggedIn ? (
                 <UserMenuDropdown cartCount={cartCount} onClose={() => setMobileOpen(false)} />
               ) : (
-                <RouterLink to="/login" className="login-btn" onClick={() => setMobileOpen(false)}>
+                <RouterLink to="/auth/login" className="login-btn" onClick={() => setMobileOpen(false)}>
                   <Profile size="20" />
                 </RouterLink>
               )}
@@ -237,10 +237,10 @@ export default function Header() {
             </>
           ) : (
             <>
-              <RouterLink to="/register" className="register-btn" onClick={() => setMobileOpen(false)}>
+              <RouterLink to="/auth/register" className="register-btn" onClick={() => setMobileOpen(false)}>
                 <FormattedMessage id="sign-up" />
               </RouterLink>
-              <RouterLink to="/login" className="login-btn" onClick={() => setMobileOpen(false)}>
+              <RouterLink to="/auth/login" className="login-btn" onClick={() => setMobileOpen(false)}>
                 <FormattedMessage id="login" />
               </RouterLink>
             </>

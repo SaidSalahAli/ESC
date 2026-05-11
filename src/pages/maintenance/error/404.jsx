@@ -1,20 +1,11 @@
 import { Link } from 'react-router-dom';
-
-// material-ui
 import Button from '@mui/material/Button';
 import CardMedia from '@mui/material/CardMedia';
 import Grid from '@mui/material/Grid2';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-
-// project-imports
 import { APP_DEFAULT_PATH } from 'config';
-
-// assets
-import error404 from 'assets/images/maintenance/img-error-404.svg';
-
-// ==============================|| ERROR 404 ||============================== //
 
 export default function Error404() {
   return (
@@ -28,7 +19,7 @@ export default function Error404() {
         <Stack direction="row" sx={{ justifyContent: 'center' }}>
           <Grid>
             <Box sx={{ width: { xs: 250, sm: 590 }, height: { xs: 130, sm: 300 } }}>
-              <CardMedia component="img" src={error404} alt="error 404" sx={{ height: 1, objectFit: 'inherit' }} />
+              <CardMedia component="img" src="/img-error-404.svg" alt="error 404" sx={{ height: 1, objectFit: 'inherit' }} />
             </Box>
           </Grid>
         </Stack>

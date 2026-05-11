@@ -54,8 +54,8 @@ axiosServices.interceptors.response.use(
       if (originalRequest._retry) {
         localStorage.removeItem('serviceToken');
         localStorage.removeItem('refreshToken');
-        if (!window.location.href.includes('/login')) {
-          window.location.pathname = '/login';
+        if (!window.location.href.includes('/auth/login')) {
+          window.location.pathname = '/auth/login';
         }
         return Promise.reject(error);
       }
@@ -83,15 +83,15 @@ axiosServices.interceptors.response.use(
         // If refresh fails, logout
         localStorage.removeItem('serviceToken');
         localStorage.removeItem('refreshToken');
-        if (!window.location.href.includes('/login')) {
-          window.location.pathname = '/login';
+        if (!window.location.href.includes('/auth/login')) {
+          window.location.pathname = '/auth/login';
         }
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
         localStorage.removeItem('serviceToken');
         localStorage.removeItem('refreshToken');
-        if (!window.location.href.includes('/login')) {
-          window.location.pathname = '/login';
+        if (!window.location.href.includes('/auth/login')) {
+          window.location.pathname = '/auth/login';
         }
         return Promise.reject(error);
       }
@@ -101,8 +101,8 @@ axiosServices.interceptors.response.use(
     if (error.response?.status === 401 && originalRequest.url.includes('/api/auth/refresh')) {
       localStorage.removeItem('serviceToken');
       localStorage.removeItem('refreshToken');
-      if (!window.location.href.includes('/login')) {
-        window.location.pathname = '/login';
+      if (!window.location.href.includes('/auth/login')) {
+        window.location.pathname = '/auth/login';
       }
       return Promise.reject(error);
     }

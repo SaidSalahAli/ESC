@@ -3,10 +3,10 @@ import { Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { FormattedMessage } from 'react-intl';
 
-import img4 from 'assets/images/homepage/1.jpg';
-import img2 from 'assets/images/homepage/2.jpg';
-import img3 from 'assets/images/homepage/3.jpg';
-import img1 from 'assets/images/homepage/4.jpg';
+import img4 from 'assets/images/homepage/1.webp';
+import img2 from 'assets/images/homepage/2.webp';
+import img3 from 'assets/images/homepage/3.webp';
+import img1 from 'assets/images/homepage/4.webp';
 
 function HomeCategoriesSection() {
   const navigate = useNavigate();

@@ -943,7 +943,6 @@ function Checkout() {
                   fontWeight: 700,
                   py: 1.1,
                   mb: 2,
-                  borderRadius: 0,
                   boxShadow: 'none',
                   borderRadius: '1px',
                   fontSize: '0.95rem',

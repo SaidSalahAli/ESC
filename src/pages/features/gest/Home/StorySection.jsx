@@ -2,7 +2,7 @@ import { Box, Typography, Button, Stack } from '@mui/material';
 import React from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Link as RouterLink } from 'react-router';
-import img4 from 'assets/images/homepage/5.jpg';
+import img4 from 'assets/images/homepage/5.webp';
 
 function StorySection() {
   const intl = useIntl();

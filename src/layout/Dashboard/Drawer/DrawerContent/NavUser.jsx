@@ -46,7 +46,7 @@ export default function UserList() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate(`/login`, {
+      navigate(`/auth/login`, {
         state: {
           from: ''
         }

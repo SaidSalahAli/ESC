@@ -1,7 +1,7 @@
 import { Box, Typography, TextField, Button, Alert, CircularProgress, Stack } from '@mui/material';
 import React, { useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
-import img4 from 'assets/images/homepage/5.jpg';
+import img4 from 'assets/images/homepage/5.webp';
 import { newsletterService } from 'api/newsletter';
 
 function Newsletter() {

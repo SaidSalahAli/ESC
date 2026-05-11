@@ -4,7 +4,7 @@ import useConfig from 'hooks/useConfig';
 import { Box, Container, Typography, Stack, Card, CardContent, Divider } from '@mui/material';
 import { Call, Send } from 'iconsax-react';
 import './policy.css';
-import img from 'assets/images/homepage/1.jpg';
+import img from 'assets/images/homepage/1.webp';
 export default function ReturnsPolicy() {
   const { i18n } = useConfig();
   const intl = useIntl();

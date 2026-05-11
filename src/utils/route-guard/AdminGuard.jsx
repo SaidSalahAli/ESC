@@ -14,7 +14,7 @@ export default function AdminGuard({ children }) {
 
   useEffect(() => {
     if (!isLoggedIn) {
-      navigate('/login', {
+      navigate('/auth/login', {
         state: {
           from: location.pathname
         },
@@ -41,4 +41,3 @@ export default function AdminGuard({ children }) {
 }
 
 AdminGuard.propTypes = { children: PropTypes.any };
-

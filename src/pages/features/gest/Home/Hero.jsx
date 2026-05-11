@@ -1,22 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Container, Typography, Button, Stack } from '@mui/material';
 import { FormattedMessage } from 'react-intl';
 import { Link as RouterLink } from 'react-router';
-import { useLazyVideo } from 'hooks/useLazyVideo';
-import videoSrc from 'assets/vid/1.mp4';
+
+// ✅ مش import — path مباشر من public
+const VIDEO_SRC = '/videos/hero.mp4';
+
+const HERO_POSTER =
+  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080"%3E%3Crect fill="%230b1213" width="1920" height="1080"/%3E%3C/svg%3E';
 
 function Hero() {
-  const { videoRef, isVisible } = useLazyVideo({
-    threshold: 0.12,
-    rootMargin: '140px'
-  });
-
+  const videoRef = useRef(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
-  const [contentVisible, setContentVisible] = useState(false);
+  const videoPlaying = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setContentVisible(true), 120);
-    return () => clearTimeout(timer);
+    const loadVideo = () => {
+      if (videoRef.current && !videoPlaying.current) {
+        videoRef.current.src = VIDEO_SRC;
+        videoPlaying.current = true;
+      }
+    };
+
+    if ('requestIdleCallback' in window) {
+      const idleId = requestIdleCallback(loadVideo, { timeout: 3000 });
+      return () => cancelIdleCallback(idleId);
+    } else {
+      const timerId = setTimeout(loadVideo, 2000);
+      return () => clearTimeout(timerId);
+    }
   }, []);
 
   return (
@@ -33,43 +45,42 @@ function Hero() {
     >
       {/* Background Layer */}
       <Box
-        ref={videoRef}
         sx={{
           position: 'absolute',
           inset: 0,
           zIndex: 0,
           background: `
-      linear-gradient(
-165deg, rgba(7, 12, 14, 0.88) 0%, rgba(7, 12, 14, 0.70) 34%, rgba(7, 12, 14, 0.28) 62%, rgba(7, 12, 14, 0.08) 100%), linear-gradient(180deg, rgba(7, 12, 14, 0.18) 0%, rgba(7, 12, 14, 0.08) 36%, rgba(7, 12, 14, 0.56) 100%)
-          `
+            linear-gradient(165deg, rgba(7,12,14,0.88) 0%, rgba(7,12,14,0.70) 34%, rgba(7,12,14,0.28) 62%, rgba(7,12,14,0.08) 100%),
+            linear-gradient(180deg, rgba(7,12,14,0.18) 0%, rgba(7,12,14,0.08) 36%, rgba(7,12,14,0.56) 100%)
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
         }}
       >
-        {isVisible && (
-          <Box
-            component="video"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            onCanPlay={() => setVideoLoaded(true)}
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '100%',
-              height: '100%',
-              minWidth: '100%',
-              minHeight: '100%',
-              objectFit: 'cover',
-              transform: videoLoaded ? 'translate(-50%, -50%) scale(1.04)' : 'translate(-50%, -50%) scale(1)',
-              opacity: videoLoaded ? 1 : 0,
-              transition: 'opacity 0.9s ease, transform 3s ease'
-            }}
-          >
-            <source src={videoSrc} type="video/mp4" />
-          </Box>
-        )}
+        <Box
+          ref={videoRef}
+          component="video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="none"
+          onCanPlay={() => setVideoLoaded(true)}
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '100%',
+            height: '100%',
+            minWidth: '100%',
+            minHeight: '100%',
+            objectFit: 'cover',
+            transform: 'translate(-50%, -50%) scale(1.04)',
+            opacity: videoLoaded ? 1 : 0,
+            transition: 'opacity 0.9s ease',
+            pointerEvents: 'none'
+          }}
+        />
       </Box>
 
       {/* Strong overlay */}
@@ -85,7 +96,7 @@ function Hero() {
         }}
       />
 
-      {/* Soft bottom fade */}
+      {/* Bottom fade */}
       <Box
         sx={{
           position: 'absolute',
@@ -99,7 +110,7 @@ function Hero() {
         }}
       />
 
-      {/* Subtle side accent */}
+      {/* Side accent */}
       <Box
         sx={{
           position: 'absolute',
@@ -129,13 +140,9 @@ function Hero() {
             maxWidth: { xs: '100%', md: 760 },
             mx: { xs: 'auto', md: 0 },
             textAlign: 'center',
-            color: '#fff',
-            opacity: contentVisible ? 1 : 0,
-            transform: contentVisible ? 'translateY(0)' : 'translateY(26px)',
-            transition: 'opacity 0.85s ease, transform 0.85s ease'
+            color: '#fff'
           }}
         >
-          {/* Eyebrow */}
           <Typography
             sx={{
               mb: 2,
@@ -150,7 +157,6 @@ function Hero() {
             <FormattedMessage id="new-collection-available" />
           </Typography>
 
-          {/* Main title */}
           <Typography
             variant="h1"
             sx={{
@@ -158,29 +164,20 @@ function Hero() {
               fontWeight: 800,
               lineHeight: 1.02,
               letterSpacing: '-0.04em',
-              fontSize: {
-                xs: '2.3rem',
-                sm: '3rem',
-                md: '4.3rem',
-                lg: '5rem'
-              },
+              fontSize: { xs: '2.3rem', sm: '3rem', md: '4.3rem', lg: '5rem' },
               textShadow: '0 10px 30px rgba(0,0,0,0.30)'
             }}
           >
             <FormattedMessage id="hero-title" />
           </Typography>
 
-          {/* Description */}
           <Typography
             sx={{
               mb: 3.5,
               mx: { xs: 'auto', md: 0 },
               color: 'rgba(255,255,255,0.88)',
               lineHeight: 1.75,
-              fontSize: {
-                xs: '1rem',
-                md: '1.1rem'
-              },
+              fontSize: { xs: '1rem', md: '1.1rem' },
               textShadow: '0 4px 16px rgba(0,0,0,0.25)'
             }}
           >
@@ -206,7 +203,6 @@ function Hero() {
                   background: 'rgba(255,255,255,0.06)',
                   backdropFilter: 'blur(6px)',
                   color: 'rgba(255,255,255,0.92)',
-                  // fontSize: '0.88rem',
                   fontWeight: 500,
                   lineHeight: 1,
                   whiteSpace: 'nowrap'
@@ -218,7 +214,7 @@ function Hero() {
           </Box>
 
           {/* CTAs */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent={{ xs: 'center', md: 'center' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
             <Button
               component={RouterLink}
               to="/collections"
@@ -226,18 +222,13 @@ function Hero() {
               size="large"
               sx={{
                 minWidth: 190,
-                // px: 4.5,
-                // py: 1.45,
                 borderRadius: 0,
                 fontWeight: 700,
                 fontSize: '0.98rem',
                 background: '#ffffff',
                 color: '#0b1213',
                 boxShadow: '0 16px 36px rgba(0,0,0,0.22)',
-                '&:hover': {
-                  background: '#f3f3f3',
-                  transform: 'translateY(-1px)'
-                },
+                '&:hover': { background: '#f3f3f3', transform: 'translateY(-1px)' },
                 transition: 'all 0.25s ease'
               }}
             >
@@ -252,7 +243,6 @@ function Hero() {
               sx={{
                 minWidth: 170,
                 px: 4.5,
-                // py: 1.45,
                 borderRadius: 0,
                 fontWeight: 600,
                 color: '#fff',
@@ -284,17 +274,9 @@ function Hero() {
           color: 'rgba(255,255,255,0.72)'
         }}
       >
-        <Typography
-          sx={{
-            mb: 1,
-            fontSize: '0.72rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.22em'
-          }}
-        >
+        <Typography sx={{ mb: 1, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.22em' }}>
           Scroll
         </Typography>
-
         <Box
           sx={{
             width: 22,

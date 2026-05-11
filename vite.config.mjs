@@ -9,9 +9,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      // this ensures that the browser opens upon server start
       open: true,
-      // this sets a default port to 3000
       port: PORT,
       host: true
     },
@@ -22,61 +20,25 @@ export default defineConfig(({ mode }) => {
     define: {
       global: 'window'
     },
-    resolve: {
-      alias: [
-        // { find: '', replacement: path.resolve(__dirname, 'src') },
-        // {
-        //   find: /^~(.+)/,
-        //   replacement: path.join(process.cwd(), 'node_modules/$1')
-        // },
-        // {
-        //   find: /^src(.+)/,
-        //   replacement: path.join(process.cwd(), 'src/$1')
-        // }
-        // {
-        //   find: 'assets',
-        //   replacement: path.join(process.cwd(), 'src/assets')
-        // },
-      ]
-    },
     base: API_URL,
     plugins: [react(), jsconfigPaths()],
     build: {
+      target: 'es2015',
+      cssCodeSplit: true,
+      sourcemap: false,
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks: {
-            // React core
             'react-vendor': ['react', 'react-dom', 'react-router-dom', 'react-router'],
-            // Material-UI
-            'mui-vendor': [
-              '@mui/material',
-              '@mui/system',
-              '@mui/base',
-              '@mui/lab',
-              '@emotion/react',
-              '@emotion/styled'
-            ],
-            // Large libraries
-            'utils-vendor': [
-              'axios',
-              'lodash-es',
-              'formik',
-              'yup',
-              'framer-motion'
-            ],
-            // Internationalization
+            'mui-core': ['@mui/material', '@mui/system', '@mui/base', '@emotion/react', '@emotion/styled'],
+            'mui-icons': ['@mui/icons-material'], // ← منفصل عشان ضخم
+            'mui-lab': ['@mui/lab'],
+            'utils-vendor': ['axios', 'lodash-es', 'formik', 'yup', 'framer-motion'],
             'i18n-vendor': ['react-intl'],
-            // Icons and UI components
-            'ui-vendor': [
-              'iconsax-react',
-              'simplebar',
-              'simplebar-react',
-              'slick-carousel'
-            ]
+            'ui-vendor': ['iconsax-react', 'simplebar', 'simplebar-react', 'slick-carousel']
           }
-        },
-        // Increase chunk size warning limit to 1000 KB
-        chunkSizeWarningLimit: 1000
+        }
       }
     }
   };

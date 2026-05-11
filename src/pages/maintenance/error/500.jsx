@@ -1,6 +1,4 @@
 import { Link } from 'react-router-dom';
-
-// material-ui
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Button from '@mui/material/Button';
 import CardMedia from '@mui/material/CardMedia';
@@ -8,14 +6,7 @@ import Grid from '@mui/material/Grid2';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-
-// project-imports
 import { APP_DEFAULT_PATH } from 'config';
-
-// assets
-import error500 from 'assets/images/maintenance/img-error-500.svg';
-
-// ==============================|| ERROR 500 ||============================== //
 
 export default function Error500() {
   const downSM = useMediaQuery((theme) => theme.breakpoints.down('sm'));
@@ -25,7 +16,7 @@ export default function Error500() {
       <Grid size={12}>
         <Stack sx={{ alignItems: 'center', justifyContent: 'center' }}>
           <Box sx={{ width: 325 }}>
-            <CardMedia component="img" src={error500} alt="error 500" sx={{ height: 1 }} />
+            <CardMedia component="img" src="/img-error-500.svg" alt="error 500" sx={{ height: 1 }} />
           </Box>
         </Stack>
       </Grid>

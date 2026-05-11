@@ -2,8 +2,8 @@
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
 
-import ProfileImg from 'assets/images/homepage/8.jpg';
-import Card3 from 'assets/images/homepage/1.jpg';
+import ProfileImg from 'assets/images/homepage/8.webp';
+import Card3 from 'assets/images/homepage/1.webp';
 
 import './about.css';
 

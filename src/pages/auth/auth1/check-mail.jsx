@@ -31,7 +31,7 @@ export default function CheckMail() {
           <AnimateButton>
             <Button
               component={Link}
-              to={isLoggedIn ? '/auth/login' : '/login'}
+              to={isLoggedIn ? '/auth/login' : '/auth/login'}
               disableElevation
               fullWidth
               size="large"

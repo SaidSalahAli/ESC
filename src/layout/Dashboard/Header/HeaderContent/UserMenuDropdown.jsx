@@ -35,7 +35,7 @@ export default function UserMenuDropdown() {
   const handleLogout = async () => {
     setOpen(false);
     await logout();
-    navigate('/login');
+    navigate('/auth/login');
   };
 
   if (!isLoggedIn) {

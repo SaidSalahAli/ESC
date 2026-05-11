@@ -8,10 +8,10 @@ import Locales from 'components/Locales';
 import RTLLayout from 'components/RTLLayout';
 import ScrollTop from 'components/ScrollTop';
 import Snackbar from 'components/@extended/Snackbar';
-import LoadingScreen from 'components/LoadingScreen';
 
-// auth-provider
+// auth-provider (MUST be before LoadingScreen to provide context)
 import { JWTProvider as AuthProvider } from 'contexts/JWTContext';
+import LoadingScreen from 'components/LoadingScreen';
 import { CartDrawerProvider } from 'contexts/CartDrawerContext';
 
 // ==============================|| APP - THEME, ROUTER, LOCAL  ||============================== //
@@ -19,12 +19,13 @@ import { CartDrawerProvider } from 'contexts/CartDrawerContext';
 export default function App() {
   return (
     <>
-      <LoadingScreen />
       <ThemeCustomization>
         <RTLLayout>
           <Locales>
             <ScrollTop>
               <AuthProvider>
+                {/* LoadingScreen now accesses JWTContext through provider */}
+                <LoadingScreen />
                 <CartDrawerProvider>
                   <>
                     <RouterProvider router={router} />

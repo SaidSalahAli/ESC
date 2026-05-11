@@ -225,7 +225,7 @@ export default function ProductDetails() {
         variant: 'alert',
         alert: { color: 'warning' }
       });
-      navigate('/login');
+      navigate('/auth/login');
       return;
     }
 

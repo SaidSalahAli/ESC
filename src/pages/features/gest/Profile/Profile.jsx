@@ -59,7 +59,7 @@ function ProfilePage() {
 
   const handleLogout = () => {
     authLogout();
-    navigate('/login');
+    navigate('/auth/login');
   };
 
   const formatDate = (dateString) => {

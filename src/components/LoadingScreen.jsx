@@ -1,38 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import Lottie from 'lottie-react';
 import logoAnimation from 'assets/logo.json';
-import ESC from 'assets/ESC-White-Trans-Vertical.png';
-import './LoadingScreen.css';
+import JWTContext from 'contexts/JWTContext';
 
+/**
+ * LoadingScreen Component
+ *
+ * Shows initialization screen while auth context is initializing
+ * Fades out smoothly once isInitialized = true
+ * Uses auth context as single source of truth for app readiness
+ */
 function LoadingScreen() {
-  const [isVisible, setIsVisible] = useState(true);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const { isInitialized } = useContext(JWTContext);
+  const [visible, setVisible] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    const handleLoad = () => {
-      setTimeout(() => {
-        setIsAnimating(true);
+    // Only proceed to fade out once initialization is complete
+    if (!isInitialized) return;
 
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 800);
-      }, 2500);
-    };
+    // Trigger fade out animation when initialization completes
+    setFadeOut(true);
 
-    if (document.readyState === 'complete') {
-      handleLoad();
-    } else {
-      window.addEventListener('load', handleLoad);
-      return () => window.removeEventListener('load', handleLoad);
-    }
-  }, []);
+    // Remove component from DOM after animation completes
+    // Matching the CSS transition duration (1s)
+    const timer = setTimeout(() => {
+      setVisible(false);
+    }, 1000);
 
-  if (!isVisible) return null;
+    return () => clearTimeout(timer);
+  }, [isInitialized]);
+
+  // Don't render if not visible
+  if (!visible) return null;
 
   return (
-    <div className={`animation-screen ${isAnimating ? 'fade-out' : ''}`}>
+    <div className={`animation-screen ${fadeOut ? 'fade-out' : ''}`}>
       <div className="logo-container">
-        <Lottie animationData={logoAnimation} loop={true} style={{ width: 200 }} />
+        <Lottie animationData={logoAnimation} loop autoplay style={{ width: 160, height: 160 }} />
       </div>
     </div>
   );

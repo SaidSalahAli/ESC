@@ -66,7 +66,9 @@ export default function CartDrawer({ open, onClose }) {
 
   const subtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
-      const price = item.sale_price || item.product_price || item.price || 0;
+      const originalPrice = Number(item.product_price || item.price || 0);
+      const salePrice = item.sale_price ? Number(item.sale_price) : null;
+      const price = salePrice && salePrice < originalPrice ? salePrice : originalPrice;
       return sum + price * item.quantity;
     }, 0);
   }, [cartItems]);
@@ -422,7 +424,10 @@ export default function CartDrawer({ open, onClose }) {
               {cartItems.map((item) => {
                 const itemId = isLoggedIn ? item.id : item.key;
                 const imageUrl = item.main_image ? getImageUrl(item.main_image) : item.image;
-                const price = item.product_price || item.sale_price || item.price || 0;
+                const price =
+                  item.sale_price && Number(item.sale_price) < Number(item.product_price || item.price)
+                    ? Number(item.sale_price)
+                    : Number(item.product_price || item.price || 0);
                 const isUpdating = updatingItems.has(itemId);
 
                 return (
@@ -441,7 +446,27 @@ export default function CartDrawer({ open, onClose }) {
                       }
                     }}
                   >
-                    <Box sx={{ display: 'flex', gap: 1.5 }}>
+                    <Box sx={{ display: 'flex', gap: 1.5, position: 'relative' }}>
+                      {/* Discount Badge */}
+                      {item.is_discount_active && item.sale_price && Number(item.sale_price) < Number(item.price) && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 8,
+                            left: 110,
+                            zIndex: 5,
+                            background: '#c8102e',
+                            color: '#fff',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            px: 0.8,
+                            py: '2px',
+                            borderRadius: '2px'
+                          }}
+                        >
+                          {Math.round(((Number(item.price) - Number(item.sale_price)) / Number(item.price)) * 100)}% OFF
+                        </Box>
+                      )}
                       {/* Image */}
                       <CardMedia
                         component="img"
@@ -494,9 +519,16 @@ export default function CartDrawer({ open, onClose }) {
                         {/* Price & Quantity Controls */}
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Box>
-                            <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                              EGP {price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
+                                EGP {price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                              </Typography>
+                              {item.is_discount_active && item.sale_price && Number(item.sale_price) < Number(item.price) && (
+                                <Typography sx={{ color: '#999', fontSize: '0.8rem', textDecoration: 'line-through' }}>
+                                  EGP {Number(item.price).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                </Typography>
+                              )}
+                            </Box>
                             <Typography sx={{ color: '#888', fontSize: '0.8rem' }}>x {item.quantity}</Typography>
                           </Box>
 
@@ -683,7 +715,7 @@ export default function CartDrawer({ open, onClose }) {
                 onClick={proceedToCheckout}
                 sx={{
                   background: '#ffff',
-                  py: 1.5,  
+                  py: 1.5,
                   fontWeight: 700,
                   textTransform: 'none',
                   color: '#0a4834',

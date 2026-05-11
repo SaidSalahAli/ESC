@@ -144,7 +144,7 @@ export default function AuthRegister() {
               });
 
               setTimeout(() => {
-                navigate('/login', { replace: true });
+                navigate('/auth/login', { replace: true });
               }, 1500);
             }
           } catch (err) {

@@ -5,11 +5,10 @@ import { Chance } from 'chance';
 import { jwtDecode } from 'jwt-decode';
 
 // reducer - state management
-import { LOGIN, LOGOUT } from 'contexts/auth-reducer/actions';
+import { LOGIN, LOGOUT, INIT_COMPLETE } from 'contexts/auth-reducer/actions';
 import authReducer from 'contexts/auth-reducer/auth';
 
 // project-imports
-import Loader from 'components/Loader';
 import axios from 'utils/axios';
 import { getRedirectUrl, clearRedirectUrl } from 'utils/checkoutStorage';
 
@@ -142,6 +141,7 @@ export const JWTProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
+        // CRITICAL: Always dispatch LOGOUT to set isInitialized = true
         dispatch({
           type: LOGOUT
         });
@@ -282,10 +282,8 @@ export const JWTProvider = ({ children }) => {
 
   const updateProfile = () => {};
 
-  if (state.isInitialized !== undefined && !state.isInitialized) {
-    return <Loader />;
-  }
-
+  // Always render children - no provider-level blocking
+  // LoadingScreen will handle showing/hiding based on isInitialized
   return (
     <JWTContext.Provider value={{ ...state, login, logout, register, resetPassword, updateProfile, googleLogin }}>
       {children}
