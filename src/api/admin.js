@@ -100,6 +100,11 @@ export const adminService = {
     return response.data;
   },
 
+  getPaymentDetails: async (orderId) => {
+    const response = await axios.get(`/api/payment/status/${orderId}`);
+    return response.data;
+  },
+
   // Return order item to stock
   returnOrderItemToStock: async (orderId, data) => {
     const response = await axios.post(`/api/admin/orders/${orderId}/return-to-stock`, data);

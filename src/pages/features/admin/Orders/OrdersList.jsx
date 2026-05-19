@@ -49,6 +49,17 @@ const paymentStatusColors = {
   refunded: 'default'
 };
 
+// Helper function to format payment method
+const getFormattedPaymentMethod = (paymentMethod) => {
+  const paymentMethodMap = {
+    paymob: 'Paymob (Card)',
+    cib_bank: 'CIB Bank (Card)',
+    cash_on_delivery: 'Cash on Delivery',
+    cod: 'Cash on Delivery'
+  };
+  return paymentMethodMap[paymentMethod] || paymentMethod;
+};
+
 export default function OrdersList() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -314,11 +325,12 @@ export default function OrdersList() {
                         </TableCell>
                         <TableCell>
                           <Chip label={order.payment_status} color={paymentStatusColors[order.payment_status] || 'default'} size="small" />
-                          {order.payment_method === 'cib_bank' && order.payment_status === 'pending' && (
-                            <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mt: 0.5, fontSize: '0.7rem' }}>
-                              Should update automatically after payment
-                            </Typography>
-                          )}
+                          {(order.payment_method === 'cib_bank' || order.payment_method === 'paymob') &&
+                            order.payment_status === 'pending' && (
+                              <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mt: 0.5, fontSize: '0.7rem' }}>
+                                Should update automatically after payment
+                              </Typography>
+                            )}
                         </TableCell>
                         <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
                         <TableCell align="right">
@@ -393,8 +405,13 @@ export default function OrdersList() {
                   Total: {selectedOrder.total} EGP
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  Payment Method: {selectedOrder.payment_method === 'cib_bank' ? 'CIB Bank (Card)' : 'Cash on Delivery'}
+                  Payment Method: {getFormattedPaymentMethod(selectedOrder.payment_method)}
                 </Typography>
+                {selectedOrder.payment_method === 'paymob' && selectedOrder.payment_status === 'pending' && (
+                  <Typography variant="caption" color="info.main" display="block" sx={{ mt: 1 }}>
+                    ℹ️ Payment is handled automatically by Paymob webhook. Only update manually if needed.
+                  </Typography>
+                )}
                 {selectedOrder.payment_method === 'cib_bank' && selectedOrder.payment_status === 'pending' && (
                   <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 1 }}>
                     Note: Payment status should update automatically after successful payment. If it remains pending, verify payment with
@@ -489,9 +506,7 @@ export default function OrdersList() {
                     <Typography variant="body2" color="textSecondary">
                       Payment Method:
                     </Typography>
-                    <Typography variant="body1">
-                      {orderDetails.payment_method === 'cib_bank' ? 'CIB Bank (Card)' : 'Cash on Delivery'}
-                    </Typography>
+                    <Typography variant="body1">{getFormattedPaymentMethod(orderDetails.payment_method)}</Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="textSecondary">
@@ -508,6 +523,62 @@ export default function OrdersList() {
                         {orderDetails.tracking_number}
                       </Typography>
                     </Grid>
+                  )}
+                </Grid>
+              </Card>
+
+              {/* Payment Information */}
+              <Card sx={{ mb: 2, p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Payment Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="textSecondary">
+                      Payment Method:
+                    </Typography>
+                    <Typography variant="body1">{getFormattedPaymentMethod(orderDetails.payment_method)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="textSecondary">
+                      Payment Status:
+                    </Typography>
+                    <Chip
+                      label={orderDetails.payment_status}
+                      color={paymentStatusColors[orderDetails.payment_status] || 'default'}
+                      size="small"
+                      sx={{ mt: 0.5 }}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="textSecondary">
+                      Amount Paid:
+                    </Typography>
+                    <Typography variant="body1">{orderDetails.total} EGP</Typography>
+                  </Grid>
+                  {orderDetails.payment && (orderDetails.payment.transaction_id || orderDetails.payment.paymob_transaction_id) && (
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="textSecondary">
+                        Transaction ID:
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                        {orderDetails.payment.paymob_transaction_id || orderDetails.payment.transaction_id || 'N/A'}
+                      </Typography>
+                    </Grid>
+                  )}
+                  {orderDetails.payment && (
+                    <>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="textSecondary">
+                          Payment Gateway Response:
+                        </Typography>
+                        <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                          {orderDetails.payment.created_at
+                            ? `Last updated: ${new Date(orderDetails.payment.created_at).toLocaleString()}`
+                            : 'N/A'}
+                        </Typography>
+                      </Grid>
+                    </>
                   )}
                 </Grid>
               </Card>

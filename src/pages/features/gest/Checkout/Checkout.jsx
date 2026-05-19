@@ -738,7 +738,7 @@ function Checkout() {
                     <Box>
                       <Stack direction="row" alignItems="center" spacing={1}>
                         <Typography fontWeight={600} color="#0f1111" fontSize="0.95rem">
-                          Card Payment (Paymob)
+                          Card Payment
                         </Typography>
                         <CreditCardIcon sx={{ fontSize: 18, color: '#0a4834' }} />
                       </Stack>

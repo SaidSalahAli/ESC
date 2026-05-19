@@ -298,10 +298,23 @@ class Order extends Model
 
     private function getPaymentTransaction($orderId)
     {
-        return $this->db->fetch(
+        $paymentTx = $this->db->fetch(
             "SELECT * FROM payment_transactions WHERE order_id = ? ORDER BY created_at DESC LIMIT 1",
             [$orderId]
         );
+
+        // Also fetch from payments table if available (for Paymob transactions)
+        $payment = $this->db->fetch(
+            "SELECT * FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1",
+            [$orderId]
+        );
+
+        // Merge both if they exist
+        if ($paymentTx && $payment) {
+            return array_merge($paymentTx, ['paymob_transaction_id' => $payment['transaction_id']]);
+        }
+
+        return $paymentTx;
     }
 
     public function findByOrderNumber($orderNumber)

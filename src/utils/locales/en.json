@@ -111,7 +111,7 @@
   "zip-code": "Zip Code (Optional)",
   "payment-method": "Payment Method",
   "cib-bank": "CIB Bank (Credit/Debit Card)",
-  "place-order-pay": "Place Order & Pay with CIB Bank",
+  "place-order-pay": "Place Order",
   "processing": "Processing...",
   "loading-checkout": "Loading checkout...",
   "please-login-checkout": "Please login to checkout",
@@ -214,38 +214,27 @@
   "about-cta": "Wear the Mission",
   "vision": "Vision",
   "vision-text": "To become the leading modest sportswear brand in the MENA region and a global reference for conscious performance activewear.",
-
   "mission": "Mission",
   "mission-text": "To empower women through high-performance modest sportswear that moves with them physically, mentally, and spiritually.",
-
   "values": "Values",
   "value-modesty": "Modesty",
   "value-movement": "Movement",
   "value-community": "Community",
   "value-empowerment": "Empowerment",
-
   "community-title": "Join Our Community",
   "community-text": "Connect with thousands of women who share the same passion for modest fitness and confident movement.",
-
   "members": "Active Members",
   "products": "Products",
   "satisfaction": "Satisfaction",
-
   "shop-now": "Shop Now",
   "collections-headline": "Made to Move. Made to Cover. Made for You.",
   "collections-copy": "Every ESC piece is designed with intention — so you can move through your day feeling comfortable and confident.",
-
   "filter-by": "Filter by:",
-
   "min-price": "Min Price",
   "max-price": "Max Price",
-
   "clear-filters": "Clear",
-
   "products-found": "products found",
-
   "try-again": "Try Again",
-
   "no-products": "No products found",
   "adjust-filters": "Try adjusting your filters",
   "contact-info-title": "Contact Information",

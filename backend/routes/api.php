@@ -104,7 +104,7 @@ $router->post('/admin/returns/{returnId}/approve', OrderReturnController::class,
 $router->post('/products/{productId}/reviews', ProductController::class, 'addReview', [AuthMiddleware::class]);
 
 // Payment
-$router->post('/payment/initialize/{orderId}', PaymentController::class, 'initialize');
+$router->post('/payment/initialize/{orderId}', PaymentController::class, 'initialize', [\App\Middleware\OptionalAuthMiddleware::class]);
 $router->post('/payment/process', PaymentController::class, 'process', [AuthMiddleware::class]);
 $router->get('/payment/status/{orderId}', PaymentController::class, 'status', [AuthMiddleware::class]);
 
