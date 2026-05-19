@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { CloseCircle } from 'iconsax-react';
 import { ordersService } from 'api/orders';
+import { guestCheckoutService } from 'api/guestCheckout';
 import './PaymentPages.css';
 
 export default function PaymentFailed() {
@@ -10,6 +11,7 @@ export default function PaymentFailed() {
   const navigate = useNavigate();
   const intl = useIntl();
   const orderNumber = searchParams.get('order');
+  const viewToken = searchParams.get('view_token');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,12 @@ export default function PaymentFailed() {
 
   const fetchOrderDetails = async () => {
     try {
-      const response = await ordersService.trackOrder(orderNumber);
+      let response;
+      if (viewToken) {
+        response = await guestCheckoutService.getGuestOrder(orderNumber, viewToken);
+      } else {
+        response = await ordersService.trackOrder(orderNumber);
+      }
       if (response.success) {
         setOrder(response.data);
       }
@@ -65,15 +72,21 @@ export default function PaymentFailed() {
         <div className="payment-actions">
           <button 
             className="btn-primary" 
-            onClick={() => navigate('/card')}
+            onClick={() => {
+              if (viewToken) {
+                navigate(`/guest-checkout/orders/${orderNumber}`, { state: { viewToken } });
+              } else {
+                navigate('/profile');
+              }
+            }}
           >
-            Try Again
+            {viewToken ? 'Track Guest Order' : 'View My Orders'}
           </button>
           <button 
             className="btn-secondary" 
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/')}
           >
-            View My Orders
+            Continue Shopping
           </button>
         </div>
       </div>

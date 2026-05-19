@@ -1,12 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
-import { Lock, Calendar, User, Lock1 } from 'iconsax-react';
 import { paymentService } from 'api/payment';
 import { ordersService } from 'api/orders';
+import { guestCheckoutService } from 'api/guestCheckout';
 import { openSnackbar } from 'api/snackbar';
-import AuthGuard from 'utils/route-guard/AuthGuard';
-import './PaymentForm.css';
+import { getImageUrl } from 'utils/imageHelper';
+
+// MUI Imports for a beautiful, premium design
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  Stack,
+  Divider,
+  Button,
+  CircularProgress,
+  Grid,
+  Alert
+} from '@mui/material';
+
+import LockIcon from '@mui/icons-material/Lock';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined';
 
 export default function PaymentForm() {
   const { orderId } = useParams();
@@ -14,17 +33,11 @@ export default function PaymentForm() {
   const navigate = useNavigate();
   const intl = useIntl();
 
+  const viewToken = searchParams.get('view_token') || searchParams.get('viewToken') || '';
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [formData, setFormData] = useState({
-    card_number: '',
-    cardholder_name: '',
-    expiry_month: '',
-    expiry_year: '',
-    cvv: ''
-  });
-  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (orderId) {
@@ -36,7 +49,9 @@ export default function PaymentForm() {
 
   const fetchOrderDetails = async () => {
     try {
-      const response = await ordersService.getOrderDetails(orderId);
+      setLoading(true);
+      // Retrieve order using viewToken for guest checkouts, or standard method
+      const response = await ordersService.getOrderDetails(orderId, viewToken || null);
       if (response.success) {
         setOrder(response.data);
       } else {
@@ -44,159 +59,56 @@ export default function PaymentForm() {
       }
     } catch (err) {
       console.error('Error fetching order:', err);
+      // Fallback try loading with guest Checkout service
+      try {
+        if (viewToken) {
+          // In some contexts, orderId could be the order number in the URL
+          const fallbackResponse = await guestCheckoutService.getGuestOrder(orderId, viewToken);
+          if (fallbackResponse.success) {
+            setOrder(fallbackResponse.data);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Fallback guest fetch failed:', e);
+      }
+
       openSnackbar({
         open: true,
-        message: 'Failed to load order details',
+        message: 'Failed to load order details. Please check the link or try again.',
         variant: 'alert',
         alert: { color: 'error' }
       });
-      navigate('/profile');
+      navigate('/');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCardNumber = (value) => {
-    // Remove all non-digits
-    const cleaned = value.replace(/\D/g, '');
-    // Add spaces every 4 digits
-    const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-    return formatted.substring(0, 19); // Max 16 digits + 3 spaces
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    let processedValue = value;
-
-    if (name === 'card_number') {
-      processedValue = formatCardNumber(value);
-    } else if (name === 'cvv') {
-      processedValue = value.replace(/\D/g, '').substring(0, 4);
-    } else if (name === 'expiry_month' || name === 'expiry_year') {
-      processedValue = value.replace(/\D/g, '');
-      if (name === 'expiry_month') {
-        processedValue = processedValue.substring(0, 2);
-        if (processedValue && parseInt(processedValue) > 12) {
-          processedValue = '12';
-        }
-      } else if (name === 'expiry_year') {
-        processedValue = processedValue.substring(0, 2);
-      }
-    } else if (name === 'cardholder_name') {
-      processedValue = value.toUpperCase();
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: processedValue
-    }));
-
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Validate card number (16 digits)
-    const cardNumber = formData.card_number.replace(/\s/g, '');
-    if (!cardNumber || cardNumber.length !== 16) {
-      newErrors.card_number = 'Card number must be 16 digits';
-    } else if (!/^\d+$/.test(cardNumber)) {
-      newErrors.card_number = 'Card number must contain only digits';
-    }
-
-    // Validate cardholder name
-    if (!formData.cardholder_name || formData.cardholder_name.length < 3) {
-      newErrors.cardholder_name = 'Please enter cardholder name';
-    }
-
-    // Validate expiry month
-    if (!formData.expiry_month || formData.expiry_month.length !== 2) {
-      newErrors.expiry_month = 'Invalid month';
-    } else {
-      const month = parseInt(formData.expiry_month);
-      if (month < 1 || month > 12) {
-        newErrors.expiry_month = 'Invalid month';
-      }
-    }
-
-    // Validate expiry year
-    if (!formData.expiry_year || formData.expiry_year.length !== 2) {
-      newErrors.expiry_year = 'Invalid year';
-    }
-
-    // Validate CVV
-    if (!formData.cvv || formData.cvv.length < 3) {
-      newErrors.cvv = 'CVV must be 3-4 digits';
-    }
-
-    // Check if card is expired
-    if (!newErrors.expiry_month && !newErrors.expiry_year) {
-      const currentYear = new Date().getFullYear() % 100;
-      const currentMonth = new Date().getMonth() + 1;
-      const expiryYear = parseInt(formData.expiry_year);
-      const expiryMonth = parseInt(formData.expiry_month);
-
-      if (expiryYear < currentYear || (expiryYear === currentYear && expiryMonth < currentMonth)) {
-        newErrors.expiry_month = 'Card has expired';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      openSnackbar({
-        open: true,
-        message: 'Please fix the errors in the form',
-        variant: 'alert',
-        alert: { color: 'error' }
-      });
-      return;
-    }
-
+  const handlePayNow = async () => {
     try {
       setProcessing(true);
-
-      // Prepare payment data
-      const paymentData = {
-        order_id: orderId,
-        card_number: formData.card_number.replace(/\s/g, ''),
-        cardholder_name: formData.cardholder_name,
-        expiry_month: formData.expiry_month,
-        expiry_year: formData.expiry_year,
-        cvv: formData.cvv
-      };
-
-      // Process payment through backend (which will send to CIB Bank)
-      const response = await paymentService.processPayment(paymentData);
-
-      if (response.success) {
-        // Redirect to CIB Bank payment page
-        if (response.data?.payment_url) {
-          window.location.href = response.data.payment_url;
-        } else {
-          throw new Error('Payment URL not received');
-        }
-      } else {
-        throw new Error(response.message || 'Payment processing failed');
-      }
-    } catch (err) {
-      console.error('Error processing payment:', err);
       openSnackbar({
         open: true,
-        message: err.message || 'Failed to process payment. Please try again.',
+        message: 'Initializing secure transaction and redirecting...',
+        variant: 'alert',
+        alert: { color: 'info' }
+      });
+
+      const response = await paymentService.initializePayment(orderId, viewToken || null);
+
+      if (response.success && response.data?.payment_url) {
+        // Redirect to Paymob's hosted checkout page
+        window.location.href = response.data.payment_url;
+      } else {
+        throw new Error(response.message || 'Failed to generate checkout URL');
+      }
+    } catch (err) {
+      console.error('Payment initialization error:', err);
+      openSnackbar({
+        open: true,
+        message: err.message || 'Failed to process payment. Please try again or pay from tracking page.',
         variant: 'alert',
         alert: { color: 'error' }
       });
@@ -207,178 +119,214 @@ export default function PaymentForm() {
 
   if (loading) {
     return (
-      <div className="payment-form-page">
-        <div className="payment-form-container">
-          <p>Loading order details...</p>
-        </div>
-      </div>
+      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="70vh" gap={2}>
+        <CircularProgress size={45} sx={{ color: '#0a4834' }} />
+        <Typography variant="body2" color="text.secondary">
+          Loading order details...
+        </Typography>
+      </Box>
     );
   }
 
   if (!order) {
     return (
-      <div className="payment-form-page">
-        <div className="payment-form-container">
-          <p>Order not found</p>
-        </div>
-      </div>
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Paper elevation={0} sx={{ p: 4, textAlign: 'center', border: '1px solid #eee', borderRadius: 2 }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Order Not Found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            We could not find details for the requested order. It may have expired or been deleted.
+          </Typography>
+          <Button variant="contained" onClick={() => navigate('/')} sx={{ bgcolor: '#0a4834', '&:hover': { bgcolor: '#0b5751' } }}>
+            Go Home
+          </Button>
+        </Paper>
+      </Container>
     );
   }
 
-  // Generate current and future years for expiry
-  const currentYear = new Date().getFullYear() % 100;
-  const years = [];
-  for (let i = 0; i < 10; i++) {
-    years.push(currentYear + i);
-  }
+  const subtotal = parseFloat(order.subtotal || 0);
+  const shippingCost = parseFloat(order.shipping_cost || 0);
+  const discount = parseFloat(order.discount || 0);
+  const total = parseFloat(order.total || 0);
 
   return (
-    <AuthGuard>
-      <div className="payment-form-page">
-        <div className="payment-form-container">
-          <div className="payment-header">
-            <div className="security-badge">
-              <Lock size="20" color="#4caf50" variant="Bold" />
-              <span>Secure Payment</span>
-            </div>
-            <h1>Payment Details</h1>
-            <p className="order-info">
-              Order: <strong>{order.order_number}</strong> | Amount:{' '}
-              <strong>
-                {order.total} {order.currency || 'EGP'}
-              </strong>
-            </p>
-          </div>
+    <Box sx={{ minHeight: '85vh', py: 6, bgcolor: '#fdfdfd' }}>
+      <Container maxWidth="md">
+        {/* Header */}
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={4}>
+          <Box>
+            <Typography variant="h4" fontWeight={800} color="#0a4834" sx={{ letterSpacing: '-0.5px' }}>
+              ESC Wear
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              SECURE HOSTED CHECKOUT
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: '#2e7d32', bgcolor: '#e8f5e9', py: 0.75, px: 1.5, borderRadius: '50px' }}>
+            <ShieldOutlinedIcon sx={{ fontSize: 16 }} />
+            <Typography variant="caption" fontWeight={600}>
+              PCI-DSS Compliant
+            </Typography>
+          </Stack>
+        </Stack>
 
-          <form onSubmit={handleSubmit} className="payment-form">
-            {/* Card Number */}
-            <div className="form-group">
-              <label htmlFor="card_number">
-                {/* <CreditCard size="18" /> */}
-                Card Number <span className="required">*</span>
-              </label>
-              <input
-                type="text"
-                id="card_number"
-                name="card_number"
-                value={formData.card_number}
-                onChange={handleInputChange}
-                placeholder="1234 5678 9012 3456"
-                maxLength="19"
-                className={errors.card_number ? 'error' : ''}
-                disabled={processing}
-                autoComplete="cc-number"
-              />
-              {errors.card_number && <span className="error-message">{errors.card_number}</span>}
-            </div>
+        <Grid container spacing={4}>
+          {/* LEFT - Order Details */}
+          <Grid item xs={12} md={7}>
+            <Paper elevation={0} sx={{ p: 3, border: '1px solid #eaeaea', borderRadius: '4px', mb: 3 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6" fontWeight={700} color="#0f1111">
+                  Order Summary
+                </Typography>
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                  #{order.order_number}
+                </Typography>
+              </Stack>
+              
+              <Divider sx={{ mb: 2 }} />
 
-            {/* Cardholder Name */}
-            <div className="form-group">
-              <label htmlFor="cardholder_name">
-                <User size="18" />
-                Cardholder Name <span className="required">*</span>
-              </label>
-              <input
-                type="text"
-                id="cardholder_name"
-                name="cardholder_name"
-                value={formData.cardholder_name}
-                onChange={handleInputChange}
-                placeholder="JOHN DOE"
-                className={errors.cardholder_name ? 'error' : ''}
-                disabled={processing}
-                autoComplete="cc-name"
-              />
-              {errors.cardholder_name && <span className="error-message">{errors.cardholder_name}</span>}
-            </div>
+              {/* Items List */}
+              <Stack spacing={2} sx={{ maxHeight: 320, overflowY: 'auto', pr: 1 }}>
+                {order.items && order.items.map((item) => (
+                  <Stack key={item.id} direction="row" spacing={2} alignItems="center">
+                    <Box
+                      component="img"
+                      src={item.main_image ? getImageUrl(item.main_image) : 'https://via.placeholder.com/80'}
+                      alt={item.product_name}
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/80';
+                      }}
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        objectFit: 'cover',
+                        borderRadius: '4px',
+                        border: '1px solid #f0f0f0',
+                        flexShrink: 0
+                      }}
+                    />
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="body2" fontWeight={700} color="#333" lineHeight={1.2}>
+                        {item.product_name}
+                      </Typography>
+                      {item.variant_name && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {item.variant_name}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" color="text.secondary">
+                        Qty: {item.quantity} × EGP {parseFloat(item.price || 0).toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" fontWeight={600} color="#0f1111" sx={{ ml: 'auto' }}>
+                      EGP {parseFloat(item.subtotal || 0).toFixed(2)}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </Paper>
 
-            {/* Expiry Date and CVV */}
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="expiry_month">
-                  <Calendar size="18" />
-                  Expiry Date <span className="required">*</span>
-                </label>
-                <div className="expiry-inputs">
-                  <input
-                    type="text"
-                    id="expiry_month"
-                    name="expiry_month"
-                    value={formData.expiry_month}
-                    onChange={handleInputChange}
-                    placeholder="MM"
-                    maxLength="2"
-                    className={errors.expiry_month ? 'error' : ''}
-                    disabled={processing}
-                    autoComplete="cc-exp-month"
-                  />
-                  <span>/</span>
-                  <input
-                    type="text"
-                    id="expiry_year"
-                    name="expiry_year"
-                    value={formData.expiry_year}
-                    onChange={handleInputChange}
-                    placeholder="YY"
-                    maxLength="2"
-                    className={errors.expiry_year ? 'error' : ''}
-                    disabled={processing}
-                    autoComplete="cc-exp-year"
-                  />
-                </div>
-                {(errors.expiry_month || errors.expiry_year) && (
-                  <span className="error-message">{errors.expiry_month || errors.expiry_year}</span>
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => {
+                if (viewToken) {
+                  navigate(`/guest-checkout/orders/${order.order_number}`, { state: { viewToken } });
+                } else {
+                  navigate('/profile');
+                }
+              }}
+              sx={{ color: '#0a4834', fontWeight: 600, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}
+            >
+              Back to Order Tracking
+            </Button>
+          </Grid>
+
+          {/* RIGHT - Payment Card */}
+          <Grid item xs={12} md={5}>
+            <Paper elevation={0} sx={{ p: 3, border: '1px solid #eaeaea', borderRadius: '4px', position: 'sticky', top: 20 }}>
+              <Typography variant="h6" fontWeight={700} mb={2}>
+                Payment Details
+              </Typography>
+
+              <Stack spacing={1.5} mb={3}>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">
+                    Subtotal
+                  </Typography>
+                  <Typography variant="body2">EGP {subtotal.toFixed(2)}</Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">
+                    Shipping
+                  </Typography>
+                  <Typography variant="body2">EGP {shippingCost.toFixed(2)}</Typography>
+                </Stack>
+                {discount > 0 && (
+                  <Stack direction="row" justifyContent="space-between" sx={{ color: '#2e7d32' }}>
+                    <Typography variant="body2">Discount</Typography>
+                    <Typography variant="body2">- EGP {discount.toFixed(2)}</Typography>
+                  </Stack>
                 )}
-              </div>
+                <Divider />
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography fontWeight={700} color="#0f1111">
+                    Total Amount
+                  </Typography>
+                  <Typography fontWeight={800} color="#B12704" fontSize="1.15rem">
+                    EGP {total.toFixed(2)}
+                  </Typography>
+                </Stack>
+              </Stack>
 
-              <div className="form-group">
-                <label htmlFor="cvv">
-                  <Lock1 size="18" />
-                  CVV <span className="required">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="cvv"
-                  name="cvv"
-                  value={formData.cvv}
-                  onChange={handleInputChange}
-                  placeholder="123"
-                  maxLength="4"
-                  className={errors.cvv ? 'error' : ''}
-                  disabled={processing}
-                  autoComplete="cc-csc"
-                />
-                {errors.cvv && <span className="error-message">{errors.cvv}</span>}
-              </div>
-            </div>
+              {/* Paymob Info */}
+              <Alert 
+                severity="info" 
+                icon={<LockIcon sx={{ color: '#1976d2' }} />} 
+                sx={{ 
+                  borderRadius: '2px', 
+                  mb: 3, 
+                  bgcolor: '#f4f9fd', 
+                  border: '1px solid #e1f0fa',
+                  '& .MuiAlert-message': { fontSize: '0.825rem', color: '#1976d2', lineHeight: 1.4 }
+                }}
+              >
+                You will be securely redirected to Paymob Payment Gateway to complete your payment with Credit Card, Mobile Wallets, or Installments.
+              </Alert>
 
-            {/* Security Notice */}
-            <div className="security-notice">
-              <Lock size="16" color="#4caf50" />
-              <p>Your payment information is encrypted and securely processed by CIB Bank. We do not store your card details.</p>
-            </div>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handlePayNow}
+                disabled={processing || order.payment_status === 'paid'}
+                startIcon={processing ? <CircularProgress size={16} color="inherit" /> : <CreditCardIcon />}
+                sx={{
+                  bgcolor: '#0a4834',
+                  color: '#fff',
+                  fontWeight: 700,
+                  py: 1.3,
+                  boxShadow: 'none',
+                  borderRadius: '2px',
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.5px',
+                  '&:hover': { bgcolor: '#0b5751', boxShadow: 'none' },
+                  '&:disabled': { bgcolor: '#e0e0e0', color: '#aaa' }
+                }}
+              >
+                {processing ? 'Processing...' : 'Pay Now via Paymob'}
+              </Button>
 
-            {/* Submit Button */}
-            <div className="form-actions">
-              <button type="button" onClick={() => navigate(-1)} className="btn-cancel" disabled={processing}>
-                Cancel
-              </button>
-              <button type="submit" className="btn-submit" disabled={processing}>
-                {processing ? (
-                  <>
-                    <span className="spinner"></span>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    Pay {order.total} {order.currency || 'EGP'}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </AuthGuard>
+              <Stack direction="row" justifyContent="center" alignItems="center" spacing={1} mt={3}>
+                <LockIcon sx={{ fontSize: 14, color: '#666' }} />
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                  Secured & encrypted transactions
+                </Typography>
+              </Stack>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Container>
+    </Box>
   );
 }

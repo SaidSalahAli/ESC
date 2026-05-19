@@ -4,8 +4,12 @@ import axios from 'utils/axios';
 
 export const paymentService = {
   // Initialize payment for an order
-  initializePayment: async (orderId) => {
-    const response = await axios.post(`/api/payment/initialize/${orderId}`);
+  initializePayment: async (orderId, viewToken = null) => {
+    const config = {};
+    if (viewToken) {
+      config.params = { view_token: viewToken };
+    }
+    const response = await axios.post(`/api/payment/initialize/${orderId}`, null, config);
     return response.data;
   },
 

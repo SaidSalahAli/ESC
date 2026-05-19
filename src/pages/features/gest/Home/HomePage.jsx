@@ -1,59 +1,79 @@
-import React from 'react';
-import Hero from './Hero';
-import Newsletter from './Newsletter';
-import Collections from './Featured';
-import ReviewsSection from './ReviewsSection';
+import React, { lazy, Suspense, useMemo } from 'react';
 import SEO from 'components/SEO';
-import Featured from './Featured';
-import HomeCategoriesSection from './HomeCategoriesSection';
-import InstagramSection from './InstagramSection.jsx';
 import ScrollReveal from 'components/ScrollReveal';
+
+// Lazy-loaded sections (IMPORTANT for bundle splitting)
+const Hero = lazy(() => import('./Hero'));
+const Newsletter = lazy(() => import('./Newsletter'));
+const ReviewsSection = lazy(() => import('./ReviewsSection'));
+const InstagramSection = lazy(() => import('./InstagramSection.jsx'));
+const HomeCategoriesSection = lazy(() => import('./HomeCategoriesSection'));
+const Featured = lazy(() => import('./Featured'));
+
 function HomePage() {
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'ESC Wear',
-    url: window.location.origin,
-    description: 'Premium modest sportswear and athletic wear. ESC-ing the average life!',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: `${window.location.origin}/products?search={search_term_string}`,
-      'query-input': 'required name=search_term_string'
-    }
-  };
+  const structuredData = useMemo(() => {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'ESC Wear',
+      url: typeof window !== 'undefined' ? window.location.origin : '',
+      description:
+        'Premium modest sportswear and athletic wear. ESC-ing the average life!',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${
+          typeof window !== 'undefined' ? window.location.origin : ''
+        }/products?search={search_term_string}`,
+        'query-input': 'required name=search_term_string'
+      }
+    };
+  }, []);
 
   return (
     <>
       <SEO
         title="ESC Wear - ESC-ing the average life! | Premium Modest Sportswear"
-        description="Discover premium modest sportswear at ESC Wear. High-quality athletic wear designed for comfort, style, and performance. Shop our collection of modest activewear for men and women."
-        keywords="modest sportswear, athletic wear, sportswear, activewear, ESC Wear, modest clothing, sports clothing, hijab sportswear, modest activewear"
+        description="Discover premium modest sportswear at ESC Wear. High-quality athletic wear designed for comfort, style, and performance."
+        keywords="modest sportswear, athletic wear, ESC Wear, modest clothing"
         image="/assets/ESC-Icon-Black-Trans.png"
         type="website"
         structuredData={structuredData}
       />
-      <Hero />
-      {/* <StorySection /> */}
+
+      <Suspense fallback={null}>
+        <Hero />
+      </Suspense>
+
       <div className="container">
         <ScrollReveal>
-          <HomeCategoriesSection />
+          <Suspense fallback={null}>
+            <HomeCategoriesSection />
+          </Suspense>
         </ScrollReveal>
       </div>
-      <ScrollReveal>
-        <Featured />
-      </ScrollReveal>
-
-
 
       <ScrollReveal>
-        <InstagramSection />
+        <Suspense fallback={null}>
+          <Featured />
+        </Suspense>
       </ScrollReveal>
 
       <ScrollReveal>
-        <ReviewsSection />
+        <Suspense fallback={null}>
+          <InstagramSection />
+        </Suspense>
       </ScrollReveal>
+
       <ScrollReveal>
-        <Newsletter />
+        <Suspense fallback={null}>
+          <ReviewsSection />
+        </Suspense>
+      </ScrollReveal>
+
+      <ScrollReveal>
+        <Suspense fallback={null}>
+          <Newsletter />
+        </Suspense>
       </ScrollReveal>
     </>
   );

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { TickCircle } from 'iconsax-react';
 import { ordersService } from 'api/orders';
+import { guestCheckoutService } from 'api/guestCheckout';
 import { openSnackbar } from 'api/snackbar';
 import './PaymentPages.css';
 
@@ -11,6 +12,7 @@ export default function PaymentSuccess() {
   const navigate = useNavigate();
   const intl = useIntl();
   const orderNumber = searchParams.get('order');
+  const viewToken = searchParams.get('view_token');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,7 +26,12 @@ export default function PaymentSuccess() {
 
   const fetchOrderDetails = async () => {
     try {
-      const response = await ordersService.trackOrder(orderNumber);
+      let response;
+      if (viewToken) {
+        response = await guestCheckoutService.getGuestOrder(orderNumber, viewToken);
+      } else {
+        response = await ordersService.trackOrder(orderNumber);
+      }
       if (response.success) {
         setOrder(response.data);
       }
@@ -67,9 +74,15 @@ export default function PaymentSuccess() {
         <div className="payment-actions">
           <button 
             className="btn-primary" 
-            onClick={() => navigate('/profile')}
+            onClick={() => {
+              if (viewToken) {
+                navigate(`/guest-checkout/orders/${orderNumber}`, { state: { viewToken } });
+              } else {
+                navigate('/profile');
+              }
+            }}
           >
-            View My Orders
+            {viewToken ? 'Track Guest Order' : 'View My Orders'}
           </button>
           <button 
             className="btn-secondary" 

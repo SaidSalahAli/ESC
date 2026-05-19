@@ -104,13 +104,14 @@ $router->post('/admin/returns/{returnId}/approve', OrderReturnController::class,
 $router->post('/products/{productId}/reviews', ProductController::class, 'addReview', [AuthMiddleware::class]);
 
 // Payment
-$router->post('/payment/initialize/{orderId}', PaymentController::class, 'initialize', [AuthMiddleware::class]);
+$router->post('/payment/initialize/{orderId}', PaymentController::class, 'initialize');
 $router->post('/payment/process', PaymentController::class, 'process', [AuthMiddleware::class]);
 $router->get('/payment/status/{orderId}', PaymentController::class, 'status', [AuthMiddleware::class]);
 
 // Payment Callbacks (No auth - called by payment gateway)
 $router->get('/payment/callback', PaymentController::class, 'callback');
 $router->post('/payment/callback', PaymentController::class, 'callback');
+$router->post('/payment/webhook', PaymentController::class, 'webhook');
 $router->get('/payment/cancel', PaymentController::class, 'cancel');
 
 // ============================================

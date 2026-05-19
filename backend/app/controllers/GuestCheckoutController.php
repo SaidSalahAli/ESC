@@ -34,7 +34,7 @@ class GuestCheckoutController
     {
         // ── 1. Validate payment method ───────────────────────────────
         $paymentMethod = $request->input('payment_method');
-        if (!in_array($paymentMethod, ['cib_bank', 'cash_on_delivery'])) {
+        if (!in_array($paymentMethod, ['paymob', 'cash_on_delivery'])) {
             return Response::validationError(['payment_method' => 'Invalid payment method']);
         }
 

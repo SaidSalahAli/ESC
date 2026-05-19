@@ -371,9 +371,33 @@ function Checkout() {
         clearGuestCart();
         clearCheckoutData();
 
-        setTimeout(() => {
-          navigate(`/guest-checkout/orders/${order.order_number}`, { state: { viewToken: order.view_token } });
-        }, 1500);
+        if (paymentMethod === 'paymob') {
+          openSnackbar({ open: true, message: 'Redirecting to secure card payment gateway...', variant: 'alert', alert: { color: 'info' } });
+          try {
+            // Call guest-compatible initialization API
+            const initResponse = await axios.post(`/api/payment/initialize/${orderId}?view_token=${order.view_token}`);
+            if (initResponse.data.success && initResponse.data.data?.payment_url) {
+              window.location.href = initResponse.data.data.payment_url;
+            } else {
+              throw new Error(initResponse.data.message || 'Payment initialization failed');
+            }
+          } catch (paymentErr) {
+            console.error('Payment initialization error:', paymentErr);
+            openSnackbar({
+              open: true,
+              message: 'Failed to initialize card payment. You can pay from your tracking page.',
+              variant: 'alert',
+              alert: { color: 'warning' }
+            });
+            setTimeout(() => {
+              navigate(`/guest-checkout/orders/${order.order_number}`, { state: { viewToken: order.view_token } });
+            }, 3000);
+          }
+        } else {
+          setTimeout(() => {
+            navigate(`/guest-checkout/orders/${order.order_number}`, { state: { viewToken: order.view_token } });
+          }, 1500);
+        }
         return;
       }
 
@@ -403,6 +427,26 @@ function Checkout() {
         // Clear saved checkout data after successful order
         clearCheckoutData();
         setTimeout(() => navigate('/profile'), 2000);
+      } else if (paymentMethod === 'paymob') {
+        openSnackbar({ open: true, message: 'Redirecting to secure card payment gateway...', variant: 'alert', alert: { color: 'info' } });
+        try {
+          const initResponse = await paymentService.initializePayment(orderId);
+          if (initResponse.success && initResponse.data?.payment_url) {
+            clearCheckoutData();
+            window.location.href = initResponse.data.payment_url;
+          } else {
+            throw new Error(initResponse.message || 'Payment initialization failed');
+          }
+        } catch (paymentErr) {
+          console.error('Payment initialization error:', paymentErr);
+          openSnackbar({
+            open: true,
+            message: 'Failed to initialize card payment. You can complete payment from your profile orders list.',
+            variant: 'alert',
+            alert: { color: 'warning' }
+          });
+          setTimeout(() => navigate('/profile'), 3000);
+        }
       } else {
         setOrderCreated(true);
         setCreatedOrderId(orderId);
@@ -670,36 +714,39 @@ function Checkout() {
 
               <FormControl component="fieldset" fullWidth>
                 <RadioGroup value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                  {/* CIB Bank - CURRENTLY DISABLED/COMMENTED OUT */}
-                  {/* <Box
-                      onClick={() => setPaymentMethod('cib_bank')}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 1.5,
-                        p: 2,
-                        mb: 1.5,
-                        borderRadius: 1,
-                        border: paymentMethod === 'cib_bank' ? '2px solid #0a4834' : '1px solid #ddd',
-                        bgcolor: paymentMethod === 'cib_bank' ? '#fffbf0' : '#fff',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <Radio
-                        value="cib_bank"
-                        size="small"
-                        sx={{ p: 0, mt: '2px', color: '#0a4834', '&.Mui-checked': { color: '#0a4834' } }}
-                      />
-                      <Box>
+                  {/* Paymob Card Payment */}
+                  <Box
+                    onClick={() => setPaymentMethod('paymob')}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 1.5,
+                      p: 2,
+                      mb: 1.5,
+                      borderRadius: 0,
+                      border: paymentMethod === 'paymob' ? '2px solid #0a4834' : '1px solid #ddd',
+                      bgcolor: paymentMethod === 'paymob' ? '#fffbf0' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Radio
+                      value="paymob"
+                      size="small"
+                      sx={{ p: 0, mt: '2px', color: '#0a4834', '&.Mui-checked': { color: '#0a4834' } }}
+                    />
+                    <Box>
+                      <Stack direction="row" alignItems="center" spacing={1}>
                         <Typography fontWeight={600} color="#0f1111" fontSize="0.95rem">
-                          <FormattedMessage id="cib-bank" />
+                          Card Payment (Paymob)
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" mt={0.25}>
-                          <FormattedMessage id="payment-method-description-cib" />
-                        </Typography>
-                      </Box>
-                    </Box> */}
+                        <CreditCardIcon sx={{ fontSize: 18, color: '#0a4834' }} />
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary" mt={0.25}>
+                        Pay securely using Visa, Mastercard, or Meeza via Paymob.
+                      </Typography>
+                    </Box>
+                  </Box>
 
                   {/* Cash on Delivery */}
                   <Box
@@ -737,125 +784,7 @@ function Checkout() {
               </FormControl>
             </Paper>
 
-            {/* ── Step 3: CIB Payment Form (shown after order creation) ── */}
-            {/* CIB BANK PAYMENT FORM - CURRENTLY DISABLED */}
-            {false && orderCreated && paymentMethod === 'cib_bank' && createdOrderId && (
-              <Paper elevation={0} sx={{ border: '2px solid #1976d2', p: 3 }}>
-                <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-                  <LockIcon sx={{ color: '#1976d2' }} />
-                  <Typography variant="h6" fontWeight={700} color="#0f1111">
-                    Payment Details
-                  </Typography>
-                </Stack>
-                <Divider sx={{ mb: 2.5 }} />
-
-                <Box component="form" onSubmit={handlePaymentSubmit}>
-                  <TextField
-                    fullWidth
-                    label="Card Number *"
-                    name="card_number"
-                    value={paymentFormData.card_number}
-                    onChange={handlePaymentInputChange}
-                    placeholder="1234 5678 9012 3456"
-                    inputProps={{ maxLength: 19 }}
-                    error={!!paymentErrors.card_number}
-                    helperText={paymentErrors.card_number}
-                    disabled={processingPayment}
-                    size="small"
-                    sx={{ ...inputSx, mb: 2 }}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Cardholder Name *"
-                    name="cardholder_name"
-                    value={paymentFormData.cardholder_name}
-                    onChange={handlePaymentInputChange}
-                    placeholder="JOHN DOE"
-                    error={!!paymentErrors.cardholder_name}
-                    helperText={paymentErrors.cardholder_name}
-                    disabled={processingPayment}
-                    size="small"
-                    sx={{ ...inputSx, mb: 2 }}
-                  />
-
-                  <Grid container spacing={2} mb={2}>
-                    <Grid item xs={4}>
-                      <TextField
-                        fullWidth
-                        label="Expiry Month *"
-                        name="expiry_month"
-                        value={paymentFormData.expiry_month}
-                        onChange={handlePaymentInputChange}
-                        placeholder="MM"
-                        inputProps={{ maxLength: 2 }}
-                        error={!!paymentErrors.expiry_month}
-                        helperText={paymentErrors.expiry_month}
-                        disabled={processingPayment}
-                        size="small"
-                        sx={inputSx}
-                      />
-                    </Grid>
-                    <Grid item xs={4}>
-                      <TextField
-                        fullWidth
-                        label="Expiry Year *"
-                        name="expiry_year"
-                        value={paymentFormData.expiry_year}
-                        onChange={handlePaymentInputChange}
-                        placeholder="YY"
-                        inputProps={{ maxLength: 2 }}
-                        error={!!paymentErrors.expiry_year}
-                        helperText={paymentErrors.expiry_year}
-                        disabled={processingPayment}
-                        size="small"
-                        sx={inputSx}
-                      />
-                    </Grid>
-                    <Grid item xs={4}>
-                      <TextField
-                        fullWidth
-                        label="CVV *"
-                        name="cvv"
-                        value={paymentFormData.cvv}
-                        onChange={handlePaymentInputChange}
-                        placeholder="123"
-                        inputProps={{ maxLength: 4 }}
-                        error={!!paymentErrors.cvv}
-                        helperText={paymentErrors.cvv}
-                        disabled={processingPayment}
-                        size="small"
-                        sx={inputSx}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  <Alert severity="success" icon={<LockIcon fontSize="small" />} sx={{ mb: 2, fontSize: '0.8rem' }}>
-                    Your payment information is encrypted and securely processed by CIB Bank. We do not store your card details.
-                  </Alert>
-
-                  <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    disabled={processingPayment}
-                    startIcon={processingPayment ? <CircularProgress size={16} color="inherit" /> : <LockIcon />}
-                    sx={{
-                      bgcolor: '#ffd814',
-                      color: '#0f1111',
-                      fontWeight: 700,
-                      py: 1.25,
-                      borderRadius: 0,
-                      boxShadow: 'none',
-                      '&:hover': { bgcolor: '#f7ca00', boxShadow: 'none' },
-                      '&:disabled': { bgcolor: '#e0e0e0', color: '#aaa' }
-                    }}
-                  >
-                    {processingPayment ? 'Processing Payment...' : `Pay EGP ${parseFloat(total).toFixed(2)}`}
-                  </Button>
-                </Box>
-              </Paper>
-            )}
+            {/* Online payment is securely initialized and redirects to Paymob's hosted checkout page */}
           </Grid>
 
           {/* ══════════════════════════════════

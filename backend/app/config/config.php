@@ -35,10 +35,8 @@ if (file_exists($envFile)) {
             continue;
         }
 
-        if (!array_key_exists($name, $_ENV)) {
-            putenv(sprintf('%s=%s', $name, $value));
-            $_ENV[$name] = $value;
-        }
+        putenv(sprintf('%s=%s', $name, $value));
+        $_ENV[$name] = $value;
     }
 }
 
@@ -46,6 +44,11 @@ if (file_exists($envFile)) {
 if (!function_exists('env')) {
     function env($key, $default = null)
     {
+        // Prioritize request-isolated $_ENV array to prevent thread-caching in environments like Apache
+        if (isset($_ENV[$key])) {
+            return $_ENV[$key];
+        }
+        
         $value = getenv($key);
         if ($value === false) {
             return $default;
@@ -79,12 +82,12 @@ return [
         'refresh_expiration' => (int)env('JWT_REFRESH_EXPIRATION', 604800),
     ],
 
-    'cib_payment' => [
-        'merchant_id' => env('CIB_MERCHANT_ID', ''),
-        'secure_hash' => env('CIB_SECURE_HASH', ''),
-        'api_url' => env('CIB_API_URL', ''),
-        'return_url' => env('CIB_RETURN_URL', ''),
-        'cancel_url' => env('CIB_CANCEL_URL', ''),
+    'paymob' => [
+        'api_key' => env('PAYMOB_API_KEY', ''),
+        'integration_id' => env('PAYMOB_INTEGRATION_ID', ''),
+        'iframe_id' => env('PAYMOB_IFRAME_ID', ''),
+        'hmac_secret' => env('PAYMOB_HMAC_SECRET', ''),
+        'base_url' => env('PAYMOB_BASE_URL', 'https://accept.paymob.com/api'),
         'currency' => 'EGP',
     ],
 

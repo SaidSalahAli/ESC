@@ -445,13 +445,13 @@ class InvoicePdfService
     {
         if ($language === 'ar') {
             return [
-                'cib_bank'         => 'بنك CIB',
+                'paymob'           => 'بطاقة ائتمانية (Paymob)',
                 'cash_on_delivery' => 'الدفع عند الاستلام',
             ];
         }
 
         return [
-            'cib_bank'         => 'CIB Bank',
+            'paymob'           => 'Card Payment (Paymob)',
             'cash_on_delivery' => 'Cash on Delivery',
         ];
     }
