@@ -254,7 +254,7 @@ function Hero() {
                 }
               }}
             >
-              <FormattedMessage id="learn-more" defaultMessage="Learn More" />
+              <FormattedMessage id="our-story" defaultMessage="Our Story" />
             </Button>
           </Stack>
         </Box>

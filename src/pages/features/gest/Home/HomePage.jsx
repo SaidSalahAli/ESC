@@ -32,9 +32,9 @@ function HomePage() {
   return (
     <>
       <SEO
-        title="ESC Wear - ESC-ing the average life! | Premium Modest Sportswear"
-        description="Discover premium modest sportswear at ESC Wear. High-quality athletic wear designed for comfort, style, and performance."
-        keywords="modest sportswear, athletic wear, ESC Wear, modest clothing"
+        title="ESC Wear | Best Sportswear & Gym Clothes Egypt — Shop the Limited Collection"
+        description="ESC Wear | Premium sportswear collection — gym sets, dry-fit tops, joggers & more. Limited stock. Shop online with fast Egypt delivery. Don't sleep on this drop."
+        keywords="modest sportswear Egypt, gym clothes Egypt, gym sets Egypt, athletic wear Egypt, ESC Wear, modest activewear, sports hijab Egypt"
         image="/assets/ESC-Icon-Black-Trans.png"
         type="website"
         structuredData={structuredData}

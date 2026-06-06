@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormattedMessage } from 'react-intl';
 
 import ProductCard from 'components/ProductCard';
+import SEO from 'components/SEO';
 import { productsService } from 'api';
 import { getImageUrl } from 'utils/imageHelper';
 
@@ -319,8 +320,36 @@ export default function Collections() {
     </Box>
   );
 
+  const collectionsStructuredData = useMemo(() => {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'ESC Wear Sportswear Collections',
+      description: 'Explore the complete collections of premium modest activewear and sportswear at ESC Wear.',
+      url: `${window.location.origin}/collections`,
+      provider: {
+        '@type': 'Organization',
+        name: 'ESC Wear',
+        logo: `${window.location.origin}/assets/ESC-Icon-Black-Trans.png`
+      },
+      about: {
+        '@type': 'Thing',
+        name: 'Modest Sportswear & Gym Clothes'
+      }
+    };
+  }, []);
+
   return (
     <Box sx={{ bgcolor: '#fff', minHeight: '100vh' }}>
+      <SEO
+        title="Premium Sportswear & Gym Clothes Collections | ESC Wear"
+        description="Explore the ESC Wear collections of premium modest sportswear, activewear, gym sets, and sports hijabs. Perfect blend of edge, comfort, and coverage."
+        keywords="sportswear collections, gym wear Egypt, activewear collections, modest sportswear, gym sets Egypt, sports hijab, athletic wear collections"
+        image="/assets/ESC-Icon-Black-Trans.png"
+        type="website"
+        structuredData={collectionsStructuredData}
+        canonical={`${window.location.origin}/collections`}
+      />
       <Box
         sx={{
           backgroundImage: `url(${ProfileImg})`,

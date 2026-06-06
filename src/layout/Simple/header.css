@@ -174,16 +174,7 @@
 .language-btn:hover {
   background: rgba(11, 18, 19, 0.05);
 }
-.cart-btn span {
-  font-size: 10px;
-  background: red;
-  border-radius: 52px;
-  padding: 0 2px;
-  color: white;
-  position: absolute;
-  top: -10px;
-  transform: rotateX(48deg);
-}
+
 
 /* Search Button */
 .search-btn {
@@ -207,12 +198,34 @@ login-btn
 .cart-btn {
   display: flex;
   align-items: center;
-  /* gap: 0.5rem; */
+  justify-content: center;
   text-decoration: none;
   border: none;
-  font-weight: 500;
+  background: none;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  padding: 6px;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #e04f4f;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  line-height: 1;
+  z-index: 2;
 }
 
 .cart-btn:hover {
@@ -350,16 +363,7 @@ login-btn
     display: none;
   }
 
-  .cart-btn span {
-    font-size: 10px;
-    background: red;
-    border-radius: 52px;
-    padding: 0 2px;
-    color: white;
-    position: absolute;
-    top: 9px;
-    transform: rotateX(48deg);
-  }
+
 
   .register-btn,
   .login-btn {
@@ -395,16 +399,7 @@ login-btn
     display: none;
   }
 
-  .cart-btn span {
-    font-size: 10px;
-    background: red;
-    border-radius: 52px;
-    padding: 0 2px;
-    color: white;
-    position: absolute;
-    top: 8px;
-    transform: rotateX(48deg);
-  }
+
 
   .register-btn {
     display: none;
@@ -458,16 +453,7 @@ login-btn
     /* padding: 0.4rem 0.6rem; */
   }
 
-  .cart-btn span {
-    font-size: 10px;
-    background: red;
-    border-radius: 52px;
-    padding: 0 2px;
-    color: white;
-    position: absolute;
-    top: 2px;
-    transform: rotateX(48deg);
-  }
+
 
   .register-btn {
     display: none;
@@ -1622,3 +1608,99 @@ login-btn
 .mobile-nav-links li:last-child {
   margin-top: 1rem;
 }
+
+/* Announcement Bar Styles */
+.announcement-bar {
+  background: linear-gradient(135deg, #0b1213 0%, #152224 100%);
+  color: #ffffff;
+  padding: 8px 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.announcement-bar.hidden {
+  height: 0;
+  padding: 0;
+  border-bottom: none;
+}
+
+.announcement-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.announcement-message {
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.announcement-countdown-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.countdown-label {
+  opacity: 0.85;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.countdown-timer {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.time-unit {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 32px;
+  justify-content: center;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+}
+
+.time-num {
+  font-weight: 700;
+  color: var(--esc-primary, #3f876f);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.time-label {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .announcement-bar {
+    height: auto;
+    padding: 6px 1rem;
+  }
+  .announcement-bar.hidden {
+    height: 0;
+    padding: 0;
+  }
+  .announcement-content {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+

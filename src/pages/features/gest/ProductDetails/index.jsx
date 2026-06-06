@@ -611,7 +611,9 @@ export default function ProductDetails() {
     '@type': 'Product',
     name: product.name,
     description: product.description || `${product.name} - Premium modest sportswear from ESC Wear`,
-    image: mainImages.length > 0 ? mainImages[0].url : `${window.location.origin}/assets/ESC-Icon-Black-Trans.png`,
+    image: mainImages.length > 0 
+      ? (mainImages[0].url.startsWith('http') ? mainImages[0].url : `${window.location.origin}${mainImages[0].url.startsWith('/') ? '' : '/'}${mainImages[0].url}`) 
+      : `${window.location.origin}/assets/ESC-Icon-Black-Trans.png`,
     brand: {
       '@type': 'Brand',
       name: 'ESC Wear'
@@ -624,29 +626,54 @@ export default function ProductDetails() {
       availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       itemCondition: 'https://schema.org/NewCondition'
     },
-    aggregateRating: reviewStats
-      ? {
-          '@type': 'AggregateRating',
-          ratingValue: reviewStats.average_rating || 0,
-          reviewCount: reviewStats.total_reviews || 0,
-          bestRating: 5,
-          worstRating: 1
-        }
-      : undefined,
     sku: product.sku || `ESC-${product.id}`,
-    category: product.category?.name || 'Sportswear'
+    category: product.category?.name || 'Sportswear',
+    ...(reviewStats && reviewStats.total_reviews > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: reviewStats.average_rating || 0,
+            reviewCount: reviewStats.total_reviews || 0,
+            bestRating: 5,
+            worstRating: 1
+          }
+        }
+      : {}),
+    ...(reviews && reviews.length > 0
+      ? {
+          review: reviews.map((r) => ({
+            '@type': 'Review',
+            author: {
+              '@type': 'Person',
+              name: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Customer'
+            },
+            datePublished: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            reviewBody: r.comment || '',
+            reviewRating: {
+              '@type': 'Rating',
+              ratingValue: r.rating || 5,
+              bestRating: 5,
+              worstRating: 1
+            }
+          }))
+        }
+      : {})
   };
 
   return (
     <>
       <SEO
-        title={`${product.name} | ESC Wear - Premium Modest Sportswear`}
+        title={`${product.name} | ${product.category?.name || 'Sportswear'} Egypt — Premium Modest Activewear`}
         description={
           product.description ||
-          `${product.name} - Premium modest sportswear from ESC Wear. High-quality athletic wear designed for comfort and style.`
+          `${product.name} | Premium modest ${product.category?.name || 'sportswear'} collection in Egypt. Intentionally designed for real movement and confidence.`
         }
-        keywords={`${product.name}, modest sportswear, athletic wear, ESC Wear, ${product.category?.name || 'sportswear'}`}
-        image={mainImages.length > 0 ? mainImages[0].url : '/assets/ESC-Icon-Black-Trans.png'}
+        keywords={`${product.name}, modest sportswear Egypt, gym clothes Egypt, sports hijab Egypt, ESC Wear, ${product.category?.name || 'sportswear'}`}
+        image={
+          mainImages.length > 0 
+            ? (mainImages[0].url.startsWith('http') ? mainImages[0].url : `${window.location.origin}${mainImages[0].url.startsWith('/') ? '' : '/'}${mainImages[0].url}`) 
+            : `${window.location.origin}/assets/ESC-Icon-Black-Trans.png`
+        }
         url={`${window.location.origin}/products/${product.id}`}
         type="product"
         structuredData={productStructuredData}

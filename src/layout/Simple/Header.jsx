@@ -14,7 +14,6 @@ import { useCartDrawer } from 'contexts/CartDrawerContext';
 import CartDrawer from 'components/CartDrawer/CartDrawer';
 import './header.css';
 import UserMenuDropdown from '../Dashboard/Header/HeaderContent/UserMenuDropdown';
-
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,6 +31,33 @@ export default function Header() {
 
   const isHomePage = location.pathname === '/';
 
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const targetDate = new Date('August 31, 2026 23:59:59').getTime();
+
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const difference = targetDate - now;
+
+      if (difference <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      setTimeLeft({ days, hours, minutes, seconds });
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
   // Fetch cart count
   useEffect(() => {
     const updateCartCount = async () => {
@@ -91,6 +117,36 @@ export default function Header() {
   return (
     <>
       <header className={`header ${isScrolled && isHomePage ? 'scrolled' : ''} ${!isHomePage ? 'always-scrolled' : ''}`}>
+        <div className={`announcement-bar ${isScrolled ? 'hidden' : ''}`}>
+          <div className="announcement-content">
+            <span className="announcement-message">
+              <FormattedMessage id="announcement-text" />
+            </span>
+            <span className="announcement-countdown-wrapper">
+              <span className="countdown-label">
+                <FormattedMessage id="announcement-ends-in" />:
+              </span>
+              <span className="countdown-timer">
+                <span className="time-unit">
+                  <span className="time-num">{timeLeft.days}</span>
+                  <span className="time-label"><FormattedMessage id="days-short" /></span>
+                </span>
+                <span className="time-unit">
+                  <span className="time-num">{timeLeft.hours}</span>
+                  <span className="time-label"><FormattedMessage id="hours-short" /></span>
+                </span>
+                <span className="time-unit">
+                  <span className="time-num">{timeLeft.minutes}</span>
+                  <span className="time-label"><FormattedMessage id="minutes-short" /></span>
+                </span>
+                <span className="time-unit">
+                  <span className="time-num">{timeLeft.seconds}</span>
+                  <span className="time-label"><FormattedMessage id="seconds-short" /></span>
+                </span>
+              </span>
+            </span>
+          </div>
+        </div>
         <nav className="container">
           <div className="nav-container">
             {/* Logo */}
@@ -155,8 +211,8 @@ export default function Header() {
 
               {/* Cart */}
               <button className="cart-btn" onClick={openCartDrawer} aria-label="Open cart">
-                <ShoppingCart size="20" backgroundColor="#ffff" />
-                <span style={{ marginLeft: 11 }}>{cartCount ? ` ${cartCount}` : 0}</span>
+                <ShoppingCart size="20" />
+                {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
               </button>
 
               {/* ===== User Menu ===== */}
