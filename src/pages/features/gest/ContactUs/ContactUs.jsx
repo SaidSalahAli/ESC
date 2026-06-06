@@ -1,6 +1,7 @@
 // src/pages/ContactUs.jsx
 import React, { useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
+import SEO from 'components/SEO';
 import { contactService } from 'api/contact';
 import { openSnackbar } from 'api/snackbar';
 import useAuth from 'hooks/useAuth';
@@ -77,6 +78,12 @@ export default function ContactUs() {
 
   return (
     <div className="contact-page">
+      <SEO
+        title="Contact Us | ESC Wear — Premium Sportswear Egypt"
+        description="Get in touch with ESC Wear. Contact our team in Egypt for orders, returns, feedback, or custom sports apparel inquiries."
+        keywords="contact esc wear, sportswear Egypt customer service, activewear customer support, gym clothes Egypt support"
+        canonical={`${window.location.origin}/contact`}
+      />
       {/* Contact Section */}
       <section className="contact-section">
         <div className="contact-container">

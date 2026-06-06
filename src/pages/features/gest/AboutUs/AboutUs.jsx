@@ -1,6 +1,7 @@
 // src/pages/AboutUs.jsx
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
+import SEO from 'components/SEO';
 
 import ProfileImg from 'assets/images/homepage/8.webp';
 import Card3 from 'assets/images/homepage/1.webp';
@@ -10,6 +11,12 @@ import './about.css';
 export default function AboutUs() {
   return (
     <div className="about-page">
+      <SEO
+        title="About Us | ESC Wear — Our Brand Story & Mission"
+        description="Learn about ESC Wear. Read our story and discover our mission to design premium, high-quality, and modest sportswear & gym wear in Egypt."
+        keywords="about esc wear, esc wear story, modest activewear mission, sportswear brand Egypt, gym clothes Egypt"
+        canonical={`${window.location.origin}/about`}
+      />
       {/* Mission Section */}
       <section className="mission-section">
         <div className="mission-container">

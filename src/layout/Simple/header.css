@@ -1704,3 +1704,34 @@ login-btn
   }
 }
 
+/* Custom fix to lock cart count badge relative to cart button in all viewport sizes */
+.cart-btn {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+  overflow: visible !important;
+}
+
+.cart-badge {
+  position: absolute !important;
+  top: -4px !important;
+  right: -4px !important;
+  background-color: #e04f4f !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  min-width: 15px !important;
+  height: 15px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 3px !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+  line-height: 1 !important;
+  z-index: 10 !important;
+  transform: none !important;
+}
+
