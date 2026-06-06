@@ -178,10 +178,13 @@ class OrderController
             $totals         = $this->orderModel->calculateTotals($cartItems, $shippingCost, $couponDiscount);
 
             // ── 7. Build order data ──────────────────────────────────
+            // If payment method is card (paymob), set initial status differently
+            $initialStatus = ($paymentMethod === 'paymob') ? 'pending' : 'pending';
+
             $orderData = [
                 'user_id'             => $request->user_id,
-                'status'              => 'pending',
-                'payment_status'      => 'pending',
+                'status'              => $initialStatus,
+                'payment_status'      => 'pending',  // ✅ Initially always pending
                 'payment_method'      => $paymentMethod,
                 'subtotal'            => $totals['subtotal'],
                 'shipping_cost'       => $totals['shipping_cost'],
@@ -197,7 +200,12 @@ class OrderController
             $orderId = $this->orderModel->createOrder($orderData, $cartItems);
             if (!$orderId) return Response::error('Failed to create order');
 
-            // ── 9. Clear cart ────────────────────────────────────────
+            // ── 9. For Cash on Delivery, automatically mark as paid ────
+            if ($paymentMethod === 'cash_on_delivery') {
+                $this->orderModel->updatePaymentStatus($orderId, 'pending');  // Marked as awaiting delivery
+            }
+
+            // ── 10. Clear cart ───────────────────────────────────────
             $this->cartModel->clearCart($request->user_id);
 
             $order = $this->orderModel->getOrderDetails($orderId);

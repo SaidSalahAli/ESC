@@ -343,7 +343,11 @@ class Order extends Model
         if ($paymentStatus === 'paid') {
             $productModel = new Product();
             foreach ($this->getOrderItems($orderId) as $item) {
-                $productModel->updateSalesCount($item['product_id']);
+                try {
+                    $productModel->updateSalesCount($item['product_id']);
+                } catch (\Exception $e) {
+                    error_log('Failed to update sales count (Stored Procedure missing?): ' . $e->getMessage());
+                }
             }
         }
 

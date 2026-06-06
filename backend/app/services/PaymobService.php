@@ -334,51 +334,124 @@ class PaymobService
     {
         $hmacSecret = $this->config['paymob']['hmac_secret'];
         if (empty($hmacSecret)) {
-            error_log('Paymob HMAC verification failed: hmac_secret is not set in config.');
+            error_log('Paymob HMAC: hmac_secret is empty!');
             return false;
         }
 
-        if (!isset($data['obj'])) {
-            error_log('Paymob callback signature check failed: obj key is missing.');
+        // Handle both Webhook (nested in 'obj') and Callback (flat parameters)
+        $obj = null;
+        if (isset($data['obj'])) {
+            $obj = $data['obj'];
+        } elseif (isset($data['success']) && isset($data['amount_cents'])) {
+            $obj = $data;
+        } else {
+            error_log('Paymob HMAC: obj missing from payload');
             return false;
         }
 
-        $obj = $data['obj'];
+        // ✅ Get HMAC from every possible location
+        $receivedHmac = '';
 
-        $hmacString = "";
+        // 1. Direct $_GET
+        if (!empty($_GET['hmac'])) {
+            $receivedHmac = $_GET['hmac'];
+        }
+
+        // 2. Parse from REQUEST_URI manually
+        if (empty($receivedHmac) && !empty($_SERVER['REQUEST_URI'])) {
+            $queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
+            if ($queryString) {
+                parse_str($queryString, $queryParams);
+                $receivedHmac = $queryParams['hmac'] ?? '';
+            }
+        }
+
+        // 3. From POST body
+        if (empty($receivedHmac) && !empty($data['hmac'])) {
+            $receivedHmac = $data['hmac'];
+        }
+
+        // 4. Read raw query string directly
+        if (empty($receivedHmac) && !empty($_SERVER['QUERY_STRING'])) {
+            parse_str($_SERVER['QUERY_STRING'], $queryParams);
+            $receivedHmac = $queryParams['hmac'] ?? '';
+        }
+
+        if (empty($receivedHmac)) {
+            error_log('HMAC Debug | ERROR: No HMAC found anywhere!');
+            return false;
+        }
+
+        // Helper to handle booleans securely (Webhook sends bools, Callback sends strings)
+        $isTrue = function($val) {
+            return $val === true || $val === 'true' || $val === 1 || $val === '1';
+        };
+
+        // ✅ Build HMAC string exactly as Paymob docs specify
+        $hmacString = '';
         $hmacString .= $obj['amount_cents'] ?? '';
         $hmacString .= $obj['created_at'] ?? '';
         $hmacString .= $obj['currency'] ?? '';
-        $hmacString .= (isset($obj['error_occured']) && $obj['error_occured']) ? 'true' : 'false';
-        $hmacString .= (isset($obj['has_parent_transaction']) && $obj['has_parent_transaction']) ? 'true' : 'false';
+        $hmacString .= (isset($obj['error_occured']) && $isTrue($obj['error_occured'])) ? 'true' : 'false';
+        $hmacString .= (isset($obj['has_parent_transaction']) && $isTrue($obj['has_parent_transaction'])) ? 'true' : 'false';
         $hmacString .= $obj['id'] ?? '';
         $hmacString .= $obj['integration_id'] ?? '';
-        $hmacString .= (isset($obj['is_3d_secure']) && $obj['is_3d_secure']) ? 'true' : 'false';
-        $hmacString .= (isset($obj['is_auth']) && $obj['is_auth']) ? 'true' : 'false';
-        $hmacString .= (isset($obj['is_capture']) && $obj['is_capture']) ? 'true' : 'false';
-        $hmacString .= (isset($obj['is_voided']) && $obj['is_voided']) ? 'true' : 'false';
-        $hmacString .= (isset($obj['is_refunded']) && $obj['is_refunded']) ? 'true' : 'false';
+        $hmacString .= (isset($obj['is_3d_secure']) && $isTrue($obj['is_3d_secure'])) ? 'true' : 'false';
+        $hmacString .= (isset($obj['is_auth']) && $isTrue($obj['is_auth'])) ? 'true' : 'false';
+        $hmacString .= (isset($obj['is_capture']) && $isTrue($obj['is_capture'])) ? 'true' : 'false';
+        $hmacString .= (isset($obj['is_refunded']) && $isTrue($obj['is_refunded'])) ? 'true' : 'false';
+        $hmacString .= (isset($obj['is_standalone_payment']) && $isTrue($obj['is_standalone_payment'])) ? 'true' : 'false';
+        $hmacString .= (isset($obj['is_voided']) && $isTrue($obj['is_voided'])) ? 'true' : 'false';
+        
+        // Handle 'order' nested array vs flat 'order' parameter
+        if (isset($obj['order']) && is_array($obj['order']) && isset($obj['order']['id'])) {
+            $hmacString .= $obj['order']['id'];
+        } elseif (isset($obj['order']) && !is_array($obj['order'])) {
+            $hmacString .= $obj['order'];
+        } else {
+            $hmacString .= '';
+        }
+
         $hmacString .= $obj['owner'] ?? '';
-        $hmacString .= (isset($obj['pending']) && $obj['pending']) ? 'true' : 'false';
-        $hmacString .= $obj['source_data']['pan'] ?? '';
-        $hmacString .= $obj['source_data']['sub_type'] ?? '';
-        $hmacString .= $obj['source_data']['type'] ?? '';
-        $hmacString .= (isset($obj['success']) && $obj['success']) ? 'true' : 'false';
+        $hmacString .= (isset($obj['pending']) && $isTrue($obj['pending'])) ? 'true' : 'false';
+        
+        // Handle 'source_data' nested array vs flat 'source_data.X' parameters
+        if (isset($obj['source_data']) && is_array($obj['source_data'])) {
+            $hmacString .= $obj['source_data']['pan'] ?? '';
+            $hmacString .= $obj['source_data']['sub_type'] ?? '';
+            $hmacString .= $obj['source_data']['type'] ?? '';
+        } else {
+            // PHP automatically converts dots to underscores in $_GET keys
+            $hmacString .= $obj['source_data_pan'] ?? ($obj['source_data.pan'] ?? '');
+            $hmacString .= $obj['source_data_sub_type'] ?? ($obj['source_data.sub_type'] ?? '');
+            $hmacString .= $obj['source_data_type'] ?? ($obj['source_data.type'] ?? '');
+        }
+
+        $hmacString .= (isset($obj['success']) && $isTrue($obj['success'])) ? 'true' : 'false';
 
         $calculatedHmac = hash_hmac('sha512', $hmacString, $hmacSecret);
 
-        $receivedHmac = $_GET['hmac'] ?? ($data['hmac'] ?? '');
-
-        if (empty($receivedHmac)) {
-            error_log('Paymob webhook callback has no hmac parameter.');
-            return false;
+        if (!hash_equals($calculatedHmac, $receivedHmac)) {
+            $logMsg = date('Y-m-d H:i:s') . " - HMAC Mismatch!\n";
+            $logMsg .= "Received HMAC: " . $receivedHmac . "\n";
+            $logMsg .= "Calculated HMAC: " . $calculatedHmac . "\n";
+            $logMsg .= "HMAC String: " . $hmacString . "\n";
+            $logMsg .= "Payload: " . json_encode($obj) . "\n";
+            $logMsg .= str_repeat('-', 50) . "\n";
+            @file_put_contents(__DIR__ . '/../../paymob_error.log', $logMsg, FILE_APPEND);
         }
+
+        error_log('HMAC Debug | Calculated: ' . $calculatedHmac);
+        error_log('HMAC Debug | Match: ' . (hash_equals($calculatedHmac, $receivedHmac) ? 'YES ✅' : 'NO ❌'));
 
         return hash_equals($calculatedHmac, $receivedHmac);
     }
 
     /**
      * Process Callback and Webhook
+     * 
+     * ✅ CRITICAL: This is the ONLY place where payment_status changes from 'pending' to 'paid' or 'failed'
+     * This ensures payment status is only updated after successful Paymob webhook with HMAC verification
      *
      * @param array $payload Webhook POST request body
      * @return array Result summary
@@ -417,7 +490,7 @@ class PaymobService
 
         $orderId = $order['id'];
 
-        // Prevent duplicate transactions
+        // ✅ Prevent duplicate transactions - critical for preventing duplicate orders
         if (!empty($transactionId)) {
             $sqlCheckTx = "SELECT id, status FROM payments WHERE transaction_id = ? LIMIT 1";
             $existingTx = $this->db->fetch($sqlCheckTx, [$transactionId]);
@@ -432,6 +505,7 @@ class PaymobService
             }
         }
 
+        // ✅ Update payment records with transaction details
         $this->updatePaymentRecord($orderId, $transactionId, $status);
 
         $this->updatePaymentTransaction($orderId, [
@@ -440,10 +514,13 @@ class PaymobService
             'gateway_response' => json_encode($payload),
         ]);
 
+        // ✅ CRITICAL: Only update order status based on payment success
         if ($status === 'success') {
+            // Payment successful - mark as paid and processing
             $this->orderModel->updatePaymentStatus($orderId, 'paid');
             $this->orderModel->updateStatus($orderId, 'processing');
 
+            // Send invoice email to customer
             try {
                 $emailService = new \App\Services\EmailService();
                 $emailService->sendOrderInvoice($orderId);
@@ -451,6 +528,7 @@ class PaymobService
                 error_log('Failed to send order invoice email: ' . $e->getMessage());
             }
         } else {
+            // Payment failed - mark as failed but keep order status pending
             $this->orderModel->updatePaymentStatus($orderId, 'failed');
         }
 

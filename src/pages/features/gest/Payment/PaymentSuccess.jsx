@@ -67,7 +67,7 @@ export default function PaymentSuccess() {
           <div className="order-info">
             <p><strong>Order Number:</strong> {order.order_number}</p>
             <p><strong>Total:</strong> {order.total} {order.currency || 'EGP'}</p>
-            <p><strong>Status:</strong> {order.status}</p>
+            <p><strong>Status:</strong> {order.status === 'pending' ? 'Processing' : order.status}</p>
           </div>
         )}
         

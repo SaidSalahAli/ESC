@@ -165,7 +165,7 @@ class GuestCheckoutController
                 'guest_name' => $guestName,
                 'view_token' => $viewToken,
                 'status' => 'pending',
-                'payment_status' => 'pending',
+                'payment_status' => 'pending',  // ✅ Initially always pending, updated only by webhook
                 'payment_method' => $paymentMethod,
                 'subtotal' => $totals['subtotal'],
                 'shipping_cost' => $totals['shipping_cost'],

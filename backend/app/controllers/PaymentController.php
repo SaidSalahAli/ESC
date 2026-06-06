@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Core\Request;
@@ -13,13 +14,13 @@ class PaymentController
 {
     private $paymentService;
     private $orderModel;
-    
+
     public function __construct()
     {
         $this->paymentService = new PaymobService();
         $this->orderModel = new Order();
     }
-    
+
     /**
      * Initialize payment for an order and get the Paymob iframe URL
      * POST /api/payment/initialize/{orderId}
@@ -28,73 +29,78 @@ class PaymentController
     {
         try {
             $order = $this->orderModel->find($orderId);
-            
+
             if (!$order) {
                 return Response::notFound('Order not found');
             }
-            
+
             // Check if order belongs to user
             if (empty($request->user_id) || $order['user_id'] != $request->user_id) {
                 // If it is a guest order, verify view_token to make it secure
                 $viewToken = $request->input('view_token') ?? $request->header('X-Guest-View-Token');
                 $isOrderGuest = !empty($order['is_guest']) || !empty($order['guest_email']);
-                
+
                 if (!$isOrderGuest || empty($order['view_token']) || !hash_equals($order['view_token'], (string)$viewToken)) {
                     return Response::forbidden('Access denied');
                 }
             }
-            
+
             // Check if order is already paid
             if ($order['payment_status'] === 'paid') {
                 return Response::error('Order is already paid');
             }
-            
+
             // Get Paymob payment iframe URL
             $paymentUrl = $this->paymentService->getPaymentUrl($orderId);
-            
+
             return Response::success([
                 'payment_url' => $paymentUrl,
                 'order_id' => $orderId,
                 'order_number' => $order['order_number'],
                 'amount' => $order['total'],
             ], 'Payment initialized successfully');
-            
         } catch (\Exception $e) {
             error_log('Paymob payment initialization failed: ' . $e->getMessage());
             return Response::error('Payment initialization failed: ' . $e->getMessage(), null, 500);
         }
     }
-    
+
     /**
      * Secure Webhook Endpoint for Paymob (Transaction Processed Callback)
      * POST /api/payment/webhook
+     * 
+     * ✅ CRITICAL: Only this endpoint should update payment status to 'paid'
+     * All payment status updates must be driven by this webhook after HMAC verification
      */
     public function webhook(Request $request)
     {
         try {
             $payload = $request->all();
-            
+
             // Validate HMAC signature to verify this request is genuinely from Paymob
             if (!$this->paymentService->verifyHmac($payload)) {
                 error_log('Paymob webhook HMAC verification failed.');
                 return Response::forbidden('Invalid signature');
             }
-            
-            // Process the transaction results and update MySQL tables
+
+            // ✅ Process the transaction results and update MySQL tables
+            // The PaymobService::processWebhook() handles:
+            // - Payment status update (pending → paid/failed)
+            // - Order status update (pending → processing/cancelled based on payment result)
+            // - Email notifications
             $result = $this->paymentService->processWebhook($payload);
-            
+
             return Response::success([
                 'processed' => true,
                 'status' => $result['status'],
                 'order_number' => $result['order']['order_number'] ?? null
             ], 'Webhook processed successfully');
-            
         } catch (\Exception $e) {
             error_log('Paymob webhook processing error: ' . $e->getMessage());
             return Response::error('Webhook processing failed: ' . $e->getMessage(), null, 500);
         }
     }
-    
+
     /**
      * Handle payment redirection callback from Paymob (Transaction Response Callback)
      * GET /api/payment/callback
@@ -103,16 +109,16 @@ class PaymentController
     {
         try {
             $data = $request->all();
-            
+
             // Redirect to success or failure page on the React frontend
             $success = $request->input('success') === 'true';
             $paymobOrderId = $request->input('order');
-            
+
             // Find order details
             $db = \App\Core\Database::getInstance();
             $sql = "SELECT id, order_number, view_token FROM orders WHERE transaction_reference = ? LIMIT 1";
             $order = $db->fetch($sql, [$paymobOrderId]);
-            
+
             if (!$order) {
                 // Try fallback by merchant_order_id / merchant_txn_ref if present
                 $orderNumber = $request->input('merchant_order_id');
@@ -120,14 +126,35 @@ class PaymentController
                     $order = $this->orderModel->findByOrderNumber($orderNumber);
                 }
             }
-            
+
+            // ✅ Proactively process transaction to prevent "pending" race condition on success page
+            if ($order && $this->paymentService->verifyHmac($data)) {
+                // Reconstruct payload to match webhook structure
+                $fakeObj = $data;
+                $fakeObj['order'] = [
+                    'id' => $paymobOrderId,
+                    'merchant_order_id' => $request->input('merchant_order_id')
+                ];
+                // Convert string booleans to actual booleans for processWebhook compatibility
+                $fakeObj['success'] = $success;
+                $fakeObj['error_occured'] = $request->input('error_occured') === 'true';
+                $fakeObj['amount_cents'] = $request->input('amount_cents');
+                $fakeObj['currency'] = $request->input('currency');
+                
+                try {
+                    $this->paymentService->processWebhook(['obj' => $fakeObj]);
+                } catch (\Exception $e) {
+                    error_log('Paymob callback proactive processing failed: ' . $e->getMessage());
+                }
+            }
+
             $config = require APP_PATH . '/config/config.php';
             $frontendUrl = $config['app']['frontend_url'];
-            
+
             $orderNumber = $order ? $order['order_number'] : ($request->input('merchant_order_id') ?? 'unknown');
             $orderId = $order ? $order['id'] : 'unknown';
             $viewTokenParam = ($order && !empty($order['view_token'])) ? '&view_token=' . $order['view_token'] : '';
-            
+
             if ($success) {
                 // If it is success, we also verify in DB or let the webhook handle it.
                 // Redirect user to Success Page
@@ -136,16 +163,15 @@ class PaymentController
                 // Redirect user to Failed Page
                 $redirectUrl = $frontendUrl . 'payment/failed?order=' . $orderNumber . '&id=' . $orderId . $viewTokenParam;
             }
-            
+
             header('Location: ' . $redirectUrl);
             exit;
-            
         } catch (\Exception $e) {
             error_log('Paymob callback redirect failed: ' . $e->getMessage());
             return Response::error('Payment callback failed: ' . $e->getMessage(), null, 500);
         }
     }
-    
+
     /**
      * Handle payment cancellation
      * GET /api/payment/cancel
@@ -154,62 +180,67 @@ class PaymentController
     {
         try {
             $orderNumber = $request->input('order') ?? 'unknown';
-            
+
             // Redirect to cancel page (frontend)
             $config = require APP_PATH . '/config/config.php';
             $cancelUrl = $config['app']['frontend_url'] . 'payment/cancelled?order=' . $orderNumber;
-            
+
             header('Location: ' . $cancelUrl);
             exit;
-            
         } catch (\Exception $e) {
             return Response::error('Payment cancellation failed: ' . $e->getMessage(), null, 500);
         }
     }
-    
+
     /**
      * Get payment status
      * GET /api/payment/status/{orderId}
+     * 
+     * Returns both payment and order status to help frontend display correct information
      */
     public function status(Request $request, $orderId)
     {
         try {
             $order = $this->orderModel->find($orderId);
-            
+
             if (!$order) {
                 return Response::notFound('Order not found');
             }
-            
+
             // Check if order belongs to user (or user is admin)
             if ($order['user_id'] != $request->user_id && $request->user_role !== 'admin') {
                 return Response::forbidden('Access denied');
             }
-            
+
             // Read status from payments table
             $db = \App\Core\Database::getInstance();
             $sql = "SELECT * FROM payments WHERE order_id = ? ORDER BY created_at DESC LIMIT 1";
             $payment = $db->fetch($sql, [$orderId]);
-            
+
             if (!$payment) {
                 return Response::success([
-                    'status' => 'not_found',
-                    'message' => 'No payment transaction found',
+                    'payment_status' => 'not_found',
+                    'order_status' => $order['status'],
+                    'message' => 'No payment transaction found yet',
+                    'order_id' => $orderId
                 ]);
             }
-            
+
             return Response::success([
-                'status' => $payment['status'],
+                'payment_status' => $payment['status'],
+                'order_status' => $order['status'],
                 'transaction_id' => $payment['transaction_id'],
                 'amount' => $payment['amount'],
                 'currency' => $payment['currency'],
                 'created_at' => $payment['created_at'],
+                'order_id' => $orderId,
+                'payment_method' => $order['payment_method']
             ]);
-            
         } catch (\Exception $e) {
             return Response::error('Failed to get payment status: ' . $e->getMessage(), null, 500);
         }
     }
-    
+
     /**
      * Refund payment (Admin only)
      * POST /api/admin/payment/{orderId}/refund
@@ -218,15 +249,14 @@ class PaymentController
     {
         try {
             $amount = $request->input('amount'); // Optional partial refund
-            
+
             $result = $this->paymentService->refundPayment($orderId, $amount);
-            
+
             if ($result['success']) {
                 return Response::success($result, 'Payment refunded successfully');
             } else {
                 return Response::error('Refund failed: ' . ($result['message'] ?? 'Unknown error'));
             }
-            
         } catch (\Exception $e) {
             return Response::error('Refund failed: ' . $e->getMessage(), null, 500);
         }
