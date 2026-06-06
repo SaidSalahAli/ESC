@@ -98,9 +98,9 @@ export default function FooterBlock({ isFull }) {
 
                 {/* SUPPORT */}
                 <Grid size={{ xs: 6, sm: 4 }}>
-           
+
                   <Stack sx={{ gap: 3 }}>
-                    <Stack sx={{ gap: { xs: 1.5, md: 2.5 } }}>                  
+                    <Stack sx={{ gap: { xs: 1.5, md: 2.5 } }}>
                       <FooterLink component={RouterLink} to="/about" underline="none">
                         <FormattedMessage id="our-story" />
                       </FooterLink>
@@ -131,7 +131,7 @@ export default function FooterBlock({ isFull }) {
                 {/* Instagram */}
                 <Grid>
                   <Tooltip title="Instagram">
-                    <Link href="https://www.instagram.com/esc.wear_" underline="none" target="_blank" sx={linkSX}>
+                    <Link href="https://www.instagram.com/esc.wear_" underline="none" target="_blank" rel="noopener noreferrer" sx={linkSX}>
                       <Instagram size={20} variant="Bold" />
                     </Link>
                   </Tooltip>
@@ -149,7 +149,7 @@ export default function FooterBlock({ isFull }) {
                 {/* Facebook */}
                 <Grid>
                   <Tooltip title="Facebook">
-                    <Link href="https://www.facebook.com/share/1G7ZvnUBzP/?mibextid=wwXIfr" underline="none" target="_blank" sx={linkSX}>
+                    <Link href="https://www.facebook.com/share/1G7ZvnUBzP/?mibextid=wwXIfr" underline="none" target="_blank" rel="noopener noreferrer" sx={linkSX}>
                       <Facebook size={20} variant="Bold" />
                     </Link>
                   </Tooltip>
@@ -158,7 +158,7 @@ export default function FooterBlock({ isFull }) {
                 {/* WhatsApp */}
                 <Grid>
                   <Tooltip title="WhatsApp">
-                    <Link href="https://wa.me/201022123004" underline="none" target="_blank" sx={linkSX}>
+                    <Link href="https://wa.me/201022123004" underline="none" target="_blank" rel="noopener noreferrer" sx={linkSX}>
                       <Whatsapp size={20} variant="Bold" />
                     </Link>
                   </Tooltip>
