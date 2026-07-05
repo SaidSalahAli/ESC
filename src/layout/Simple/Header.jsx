@@ -14,6 +14,15 @@ import { useCartDrawer } from 'contexts/CartDrawerContext';
 import CartDrawer from 'components/CartDrawer/CartDrawer';
 import './header.css';
 import UserMenuDropdown from '../Dashboard/Header/HeaderContent/UserMenuDropdown';
+import axiosServices from 'utils/axios';
+
+const DEFAULT_NAV_LINKS = [
+  { label_en: 'Home', label_ar: 'الرئيسية', url: '/' },
+  { label_en: 'Collections', label_ar: 'المجموعات', url: '/collections' },
+  { label_en: 'About', label_ar: 'من نحن', url: '/about' },
+  { label_en: 'Contact', label_ar: 'تواصل معنا', url: '/contact' }
+];
+
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,10 +40,55 @@ export default function Header() {
 
   const isHomePage = location.pathname === '/';
 
+  // ===== Header Settings from DB =====
+  const [headerSettings, setHeaderSettings] = useState({
+    announcement_text_en: 'FREE SHIPPING ON ORDERS OVER 500 EGP | SUMMER SALE UP TO 50% OFF',
+    announcement_text_ar: 'شحن مجاني على الطلبات فوق 500 جنيه | خصومات الصيف حتى 50%',
+    announcement_enabled: true,
+    countdown_target_date: 'August 31, 2026 23:59:59',
+    countdown_enabled: true,
+    nav_links: DEFAULT_NAV_LINKS
+  });
+
+  useEffect(() => {
+    axiosServices
+      .get('/api/settings')
+      .then((res) => {
+        const data = res.data?.data || res.data || {};
+
+        let navLinks = DEFAULT_NAV_LINKS;
+        if (data.header_nav_links) {
+          try {
+            navLinks = JSON.parse(data.header_nav_links);
+          } catch {
+            navLinks = DEFAULT_NAV_LINKS;
+          }
+        }
+
+        setHeaderSettings({
+          announcement_text_en:
+            data.announcement_text_en || 'FREE SHIPPING ON ORDERS OVER 500 EGP | SUMMER SALE UP TO 50% OFF',
+          announcement_text_ar: data.announcement_text_ar || 'شحن مجاني على الطلبات فوق 500 جنيه | خصومات الصيف حتى 50%',
+          announcement_enabled: data.announcement_enabled !== 'false' && data.announcement_enabled !== '0',
+          countdown_target_date: data.countdown_target_date || 'August 31, 2026 23:59:59',
+          countdown_enabled: data.countdown_enabled !== 'false' && data.countdown_enabled !== '0',
+          nav_links: navLinks
+        });
+      })
+      .catch(() => {
+        // silently fall back to defaults
+      });
+  }, []);
+
+  const announcementText =
+    i18n === 'ar' ? headerSettings.announcement_text_ar : headerSettings.announcement_text_en;
+
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    const targetDate = new Date('August 31, 2026 23:59:59').getTime();
+    if (!headerSettings.countdown_enabled) return;
+
+    const targetDate = new Date(headerSettings.countdown_target_date).getTime();
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
@@ -57,7 +111,8 @@ export default function Header() {
     const timer = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [headerSettings.countdown_enabled, headerSettings.countdown_target_date]);
+
   // Fetch cart count
   useEffect(() => {
     const updateCartCount = async () => {
@@ -117,36 +172,40 @@ export default function Header() {
   return (
     <>
       <header className={`header ${isScrolled && isHomePage ? 'scrolled' : ''} ${!isHomePage ? 'always-scrolled' : ''}`}>
-        <div className={`announcement-bar ${isScrolled ? 'hidden' : ''}`}>
-          <div className="announcement-content">
-            <span className="announcement-message">
-              <FormattedMessage id="announcement-text" />
-            </span>
-            <span className="announcement-countdown-wrapper">
-              <span className="countdown-label">
-                <FormattedMessage id="announcement-ends-in" />:
+        {headerSettings.announcement_enabled && (
+          <div className={`announcement-bar ${isScrolled ? 'hidden' : ''}`}>
+            <div className="announcement-content">
+              <span className="announcement-message">
+                {announcementText}
               </span>
-              <span className="countdown-timer">
-                <span className="time-unit">
-                  <span className="time-num">{timeLeft.days}</span>
-                  <span className="time-label"><FormattedMessage id="days-short" /></span>
+              {headerSettings.countdown_enabled && (
+                <span className="announcement-countdown-wrapper">
+                  <span className="countdown-label">
+                    <FormattedMessage id="announcement-ends-in" />:
+                  </span>
+                  <span className="countdown-timer">
+                    <span className="time-unit">
+                      <span className="time-num">{timeLeft.days}</span>
+                      <span className="time-label"><FormattedMessage id="days-short" /></span>
+                    </span>
+                    <span className="time-unit">
+                      <span className="time-num">{timeLeft.hours}</span>
+                      <span className="time-label"><FormattedMessage id="hours-short" /></span>
+                    </span>
+                    <span className="time-unit">
+                      <span className="time-num">{timeLeft.minutes}</span>
+                      <span className="time-label"><FormattedMessage id="minutes-short" /></span>
+                    </span>
+                    <span className="time-unit">
+                      <span className="time-num">{timeLeft.seconds}</span>
+                      <span className="time-label"><FormattedMessage id="seconds-short" /></span>
+                    </span>
+                  </span>
                 </span>
-                <span className="time-unit">
-                  <span className="time-num">{timeLeft.hours}</span>
-                  <span className="time-label"><FormattedMessage id="hours-short" /></span>
-                </span>
-                <span className="time-unit">
-                  <span className="time-num">{timeLeft.minutes}</span>
-                  <span className="time-label"><FormattedMessage id="minutes-short" /></span>
-                </span>
-                <span className="time-unit">
-                  <span className="time-num">{timeLeft.seconds}</span>
-                  <span className="time-label"><FormattedMessage id="seconds-short" /></span>
-                </span>
-              </span>
-            </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         <nav className="container">
           <div className="nav-container">
             {/* Logo */}
@@ -158,29 +217,20 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Nav Links */}
+            {/* Nav Links - Dynamic from DB */}
             <div>
               <ul className={`nav-links ${isHomePage ? 'home-page-links' : ''} ${isHomePage && !isScrolled ? 'nav-white' : 'nav-dark'}`}>
-                <li>
-                  <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-                    <FormattedMessage id="home" />
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/collections" className={({ isActive }) => (isActive ? 'active' : '')}>
-                    <FormattedMessage id="collections" />
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/about" className={({ isActive }) => (isActive ? 'active' : '')}>
-                    <FormattedMessage id="about" />
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/contact" className={({ isActive }) => (isActive ? 'active' : '')}>
-                    <FormattedMessage id="contact" />
-                  </NavLink>
-                </li>
+                {headerSettings.nav_links.map((link, idx) => (
+                  <li key={idx}>
+                    <NavLink
+                      to={link.url}
+                      end={link.url === '/'}
+                      className={({ isActive }) => (isActive ? 'active' : '')}
+                    >
+                      {i18n === 'ar' ? link.label_ar : link.label_en}
+                    </NavLink>
+                  </li>
+                ))}
               </ul>
             </div>
 

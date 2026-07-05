@@ -163,6 +163,12 @@ $router->post('/admin/reviews/{reviewId}/reject', AdminController::class, 'rejec
 
 // Settings Management
 $router->put('/admin/settings/shipping-cost', AdminController::class, 'updateShippingCost');
+$router->put('/admin/header-settings', AdminController::class, 'updateHeaderSettings', [AdminMiddleware::class]);
+$router->get('/admin/global-offer', AdminController::class, 'getGlobalOffer', [AdminMiddleware::class]);
+$router->put('/admin/global-offer', AdminController::class, 'updateGlobalOffer', [AdminMiddleware::class]);
+
+// Public: frontend can read global offer to display on products
+$router->get('/settings/global-offer', AdminController::class, 'getGlobalOffer');
 
 // Shipping Governorates Management
 $router->get('/admin/shipping-governorates', AdminController::class, 'getAllShippingGovernorates', [AdminMiddleware::class]);

@@ -48,6 +48,12 @@ class ProductController
 
             $products = $this->productModel->search($query, $filters, $limit, $offset);
 
+            // Apply discount meta (individual + global offer)
+            foreach ($products as &$p) {
+                $p = $this->productModel->applyDiscountMeta($p);
+            }
+            unset($p);
+
             // Format products based on language
             $lang = $request->language();
             $products = Localization::formatProducts($products, $lang);
@@ -79,6 +85,12 @@ class ProductController
             $limit = (int)$request->input('limit', 8);
             $products = $this->productModel->getFeatured($limit);
 
+            // Apply discount meta (individual + global offer)
+            foreach ($products as &$p) {
+                $p = $this->productModel->applyDiscountMeta($p);
+            }
+            unset($p);
+
             // Format products based on language
             $lang = $request->language();
             $products = Localization::formatProducts($products, $lang);
@@ -97,6 +109,12 @@ class ProductController
         try {
             $limit = (int)$request->input('limit', 10);
             $products = $this->productModel->getTopSelling($limit);
+
+            // Apply discount meta (individual + global offer)
+            foreach ($products as &$p) {
+                $p = $this->productModel->applyDiscountMeta($p);
+            }
+            unset($p);
 
             // Format products based on language
             $lang = $request->language();
@@ -121,6 +139,9 @@ class ProductController
             }
 
             $productDetails = $this->productModel->getProductDetails($product['id']);
+
+            // Apply discount meta (individual + global offer)
+            $productDetails = $this->productModel->applyDiscountMeta($productDetails);
 
             // Format product based on language
             $lang = $request->language();
@@ -148,6 +169,9 @@ class ProductController
             if (!$productDetails) {
                 return Response::notFound('Product not found');
             }
+
+            // Apply discount meta (individual + global offer)
+            $productDetails = $this->productModel->applyDiscountMeta($productDetails);
 
             // Format product based on language
             $lang = $request->language();
@@ -206,6 +230,12 @@ class ProductController
 
             $products = $this->productModel->getByCategory($categoryId, $limit, $offset);
 
+            // Apply discount meta (individual + global offer)
+            foreach ($products as &$p) {
+                $p = $this->productModel->applyDiscountMeta($p);
+            }
+            unset($p);
+
             // Format products based on language
             $lang = $request->language();
             $products = Localization::formatProducts($products, $lang);
@@ -247,6 +277,12 @@ class ProductController
                 $product['category_id'],
                 4
             );
+
+            // Apply discount meta (individual + global offer)
+            foreach ($relatedProducts as &$p) {
+                $p = $this->productModel->applyDiscountMeta($p);
+            }
+            unset($p);
 
             // Format products based on language
             $lang = $request->language();

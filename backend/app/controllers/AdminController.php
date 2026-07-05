@@ -1300,6 +1300,120 @@ class AdminController
     }
 
     /**
+     * Update header settings (admin only)
+     * Keys: announcement_text_en, announcement_text_ar, announcement_enabled,
+     *       countdown_target_date, countdown_enabled, header_nav_links
+     */
+    public function updateHeaderSettings(Request $request)
+    {
+        try {
+            $allowed = [
+                'announcement_text_en',
+                'announcement_text_ar',
+                'announcement_enabled',
+                'countdown_target_date',
+                'countdown_enabled',
+                'header_nav_links',
+            ];
+
+            $data = $request->all();
+            $updated = [];
+
+            foreach ($allowed as $key) {
+                if (array_key_exists($key, $data)) {
+                    $value = $data[$key];
+                    // Validate nav_links JSON
+                    if ($key === 'header_nav_links') {
+                        $decoded = json_decode($value, true);
+                        if (json_last_error() !== JSON_ERROR_NONE) {
+                            return Response::error('header_nav_links must be valid JSON', null, 400);
+                        }
+                        $value = json_encode($decoded); // re-encode to normalize
+                    }
+                    $this->settingsModel->setSetting($key, $value);
+                    $updated[$key] = $value;
+                }
+            }
+
+            return Response::success($updated, 'Header settings updated successfully');
+        } catch (\Exception $e) {
+            return Response::error('Failed to update header settings: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Get current global offer
+     */
+    public function getGlobalOffer(Request $request)
+    {
+        try {
+            $allSettings = $this->settingsModel->getAllSettings();
+            return Response::success([
+                'global_offer_enabled'    => ($allSettings['global_offer_enabled'] ?? 'false') === 'true',
+                'global_offer_type'       => $allSettings['global_offer_type']       ?? 'percentage',
+                'global_offer_value'      => (float)($allSettings['global_offer_value'] ?? 0),
+                'global_offer_label_en'   => $allSettings['global_offer_label_en']   ?? '',
+                'global_offer_label_ar'   => $allSettings['global_offer_label_ar']   ?? '',
+                'global_offer_start_at'   => $allSettings['global_offer_start_at']   ?? '',
+                'global_offer_end_at'     => $allSettings['global_offer_end_at']     ?? '',
+            ]);
+        } catch (\Exception $e) {
+            return Response::error('Failed to fetch global offer: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Update / activate / deactivate the global offer
+     */
+    public function updateGlobalOffer(Request $request)
+    {
+        try {
+            $data = $request->all();
+
+            $enabled    = isset($data['global_offer_enabled']) && ($data['global_offer_enabled'] === true || $data['global_offer_enabled'] === 'true' || $data['global_offer_enabled'] === 1);
+            $type       = in_array($data['global_offer_type'] ?? '', ['percentage', 'fixed']) ? $data['global_offer_type'] : 'percentage';
+            $value      = isset($data['global_offer_value']) ? (float)$data['global_offer_value'] : 0;
+            $labelEn    = trim($data['global_offer_label_en'] ?? '');
+            $labelAr    = trim($data['global_offer_label_ar'] ?? '');
+            $startAt    = !empty($data['global_offer_start_at']) ? $data['global_offer_start_at'] : '';
+            $endAt      = !empty($data['global_offer_end_at'])   ? $data['global_offer_end_at']   : '';
+
+            // Validate
+            if ($enabled) {
+                if ($value <= 0) {
+                    return Response::error('Offer value must be greater than zero', null, 400);
+                }
+                if ($type === 'percentage' && $value > 100) {
+                    return Response::error('Percentage offer cannot exceed 100%', null, 400);
+                }
+                if ($startAt && $endAt && strtotime($endAt) <= strtotime($startAt)) {
+                    return Response::error('End date must be after start date', null, 400);
+                }
+            }
+
+            $this->settingsModel->setSetting('global_offer_enabled',  $enabled ? 'true' : 'false');
+            $this->settingsModel->setSetting('global_offer_type',      $type);
+            $this->settingsModel->setSetting('global_offer_value',     $value);
+            $this->settingsModel->setSetting('global_offer_label_en',  $labelEn);
+            $this->settingsModel->setSetting('global_offer_label_ar',  $labelAr);
+            $this->settingsModel->setSetting('global_offer_start_at',  $startAt);
+            $this->settingsModel->setSetting('global_offer_end_at',    $endAt);
+
+            return Response::success([
+                'global_offer_enabled'  => $enabled,
+                'global_offer_type'     => $type,
+                'global_offer_value'    => $value,
+                'global_offer_label_en' => $labelEn,
+                'global_offer_label_ar' => $labelAr,
+                'global_offer_start_at' => $startAt,
+                'global_offer_end_at'   => $endAt,
+            ], $enabled ? 'Global offer activated successfully' : 'Global offer deactivated');
+        } catch (\Exception $e) {
+            return Response::error('Failed to update global offer: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
      * Get all shipping governorates
      */
     public function getShippingGovernorates(Request $request)

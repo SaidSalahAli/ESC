@@ -671,20 +671,50 @@ class Product extends Model
         $price = isset($product['price']) ? (float)$product['price'] : 0;
         $salePrice = null;
 
-        $isActive = isset($product['is_discount_active']) && (int)$product['is_discount_active'] === 1;
+        $isActive     = isset($product['is_discount_active']) && (int)$product['is_discount_active'] === 1;
         $discountType = $product['discount_type'] ?? 'none';
         $discountValue = isset($product['discount_value']) ? (float)$product['discount_value'] : 0;
 
         $now = time();
 
         $startOk = empty($product['discount_start_at']) || strtotime($product['discount_start_at']) <= $now;
-        $endOk = empty($product['discount_end_at']) || strtotime($product['discount_end_at']) >= $now;
+        $endOk   = empty($product['discount_end_at'])   || strtotime($product['discount_end_at'])   >= $now;
 
-        if ($isActive && $price > 0 && $discountValue > 0 && $startOk && $endOk) {
+        $productHasDiscount = $isActive && $price > 0 && $discountValue > 0 && $startOk && $endOk;
+
+        if ($productHasDiscount) {
+            // ── Individual product discount ────────────────────────────────
             if ($discountType === 'percentage') {
                 $salePrice = $price - ($price * $discountValue / 100);
             } elseif ($discountType === 'fixed') {
                 $salePrice = $price - $discountValue;
+            }
+        } else {
+            // ── Fall back to Global Offer ──────────────────────────────────
+            try {
+                $settingsModel  = new \App\Models\Settings();
+                $allSettings    = $settingsModel->getAllSettings();
+
+                $globalEnabled  = ($allSettings['global_offer_enabled'] ?? 'false') === 'true';
+                $globalType     = $allSettings['global_offer_type']  ?? 'percentage';
+                $globalValue    = (float)($allSettings['global_offer_value'] ?? 0);
+                $globalStart    = $allSettings['global_offer_start_at'] ?? '';
+                $globalEnd      = $allSettings['global_offer_end_at']   ?? '';
+
+                $gStartOk = empty($globalStart) || strtotime($globalStart) <= $now;
+                $gEndOk   = empty($globalEnd)   || strtotime($globalEnd)   >= $now;
+
+                if ($globalEnabled && $globalValue > 0 && $gStartOk && $gEndOk && $price > 0) {
+                    if ($globalType === 'percentage') {
+                        $salePrice = $price - ($price * $globalValue / 100);
+                    } elseif ($globalType === 'fixed') {
+                        $salePrice = $price - $globalValue;
+                    }
+                    // Tag the product so the frontend knows this came from a global offer
+                    $product['from_global_offer'] = true;
+                }
+            } catch (\Exception $e) {
+                // Settings unavailable – skip global offer silently
             }
         }
 

@@ -45,6 +45,14 @@ const InventoryManagement = Loadable(lazy(() => import('pages/features/admin/Inv
 const CustomersList = Loadable(lazy(() => import('pages/features/admin/Customers/CustomersList')));
 const ReviewsList = Loadable(lazy(() => import('pages/features/admin/Reviews/ReviewsList')));
 const SalesReports = Loadable(lazy(() => import('pages/features/admin/Reports/SalesReports')));
+const HeaderSettingsPage = Loadable(lazy(() => import('pages/features/admin/HeaderSettings/HeaderSettingsPage')));
+const ContactMessages = Loadable(lazy(() => import('pages/features/admin/Contact/ContactMessages')));
+const ContactMessageDetail = Loadable(lazy(() => import('pages/features/admin/Contact/ContactMessageDetail')));
+const NewsletterManagement = Loadable(lazy(() => import('pages/features/admin/Newsletter/NewsletterManagement')));
+const ReturnsManagement = Loadable(lazy(() => import('pages/features/admin/Returns/ReturnsManagement')));
+const BarcodeScanner = Loadable(lazy(() => import('pages/features/admin/BarcodeScanner/BarcodeScanner')));
+const AdminSettingsPage = Loadable(lazy(() => import('pages/admin/SettingsPage')));
+const GlobalOfferPage = Loadable(lazy(() => import('pages/features/admin/GlobalOffer/GlobalOfferPage')));
 
 // =====================
 // MAINTENANCE
@@ -112,7 +120,15 @@ const MainRoutes = {
         { path: 'inventory', element: <InventoryManagement /> },
         { path: 'customers', element: <CustomersList /> },
         { path: 'reviews', element: <ReviewsList /> },
-        { path: 'reports', element: <SalesReports /> }
+        { path: 'reports', element: <SalesReports /> },
+        { path: 'header-settings', element: <HeaderSettingsPage /> },
+        { path: 'contact-messages', element: <ContactMessages /> },
+        { path: 'contact-messages/:id', element: <ContactMessageDetail /> },
+        { path: 'newsletter', element: <NewsletterManagement /> },
+        { path: 'returns', element: <ReturnsManagement /> },
+        { path: 'barcode-scanner', element: <BarcodeScanner /> },
+        { path: 'settings', element: <AdminSettingsPage /> },
+        { path: 'global-offer', element: <GlobalOfferPage /> }
       ]
     },
 

@@ -29,7 +29,12 @@ class Cart extends Model
                 p.name AS product_name,
                 p.slug AS product_slug,
                 p.price AS product_price,
-                p.sale_price,
+                p.sale_price AS db_sale_price,
+                p.is_discount_active,
+                p.discount_type,
+                p.discount_value,
+                p.discount_start_at,
+                p.discount_end_at,
                 p.main_image,
                 p.stock_quantity,
                 p.is_active,
@@ -38,16 +43,13 @@ class Cart extends Model
                 -- Category Information
                 cat.name AS category_name,
                 
-                -- Variant Information (هنا الحل - نجلب size_value و color_value)
+                -- Variant Information
                 v.name AS variant_name,
                 v.value AS variant_value,
                 v.size_value,
                 v.color_value,
                 v.price_modifier,
-                v.stock_quantity AS variant_stock,
-                
-                -- Calculated Subtotal
-                (COALESCE(p.sale_price, p.price) + COALESCE(v.price_modifier, 0)) * c.quantity AS subtotal
+                v.stock_quantity AS variant_stock
                 
             FROM cart c
             JOIN products p 
@@ -60,7 +62,34 @@ class Cart extends Model
             ORDER BY c.created_at DESC
         ";
         
-        return $this->db->fetchAll($sql, [$userId]);
+        $items = $this->db->fetchAll($sql, [$userId]);
+
+        // Apply dynamic discount meta (includes global offer)
+        $productModel = new \App\Models\Product();
+        foreach ($items as &$item) {
+            // Build a minimal product array for applyDiscountMeta
+            $productRow = [
+                'price'               => $item['product_price'],
+                'sale_price'          => $item['db_sale_price'],
+                'is_discount_active'  => $item['is_discount_active'],
+                'discount_type'       => $item['discount_type'],
+                'discount_value'      => $item['discount_value'],
+                'discount_start_at'   => $item['discount_start_at'],
+                'discount_end_at'     => $item['discount_end_at'],
+            ];
+            $discounted = $productModel->applyDiscountMeta($productRow);
+            // Write effective sale_price back into the cart item
+            $item['sale_price'] = $discounted['sale_price'];
+            $item['has_discount'] = $discounted['has_discount'];
+            $item['discount_percent'] = $discounted['discount_percent'];
+            // Recalculate subtotal with effective price
+            $effectivePrice = $discounted['sale_price'] ?? $item['product_price'];
+            $effectivePrice += (float)($item['price_modifier'] ?? 0);
+            $item['subtotal'] = $effectivePrice * $item['quantity'];
+        }
+        unset($item);
+
+        return $items;
     }
     
     /**
@@ -167,23 +196,26 @@ class Cart extends Model
      */
     public function getCartTotal($userId)
     {
-        $sql = "
-            SELECT 
-                COUNT(*) AS item_count,
-                COALESCE(SUM(c.quantity), 0) AS total_items,
-                COALESCE(
-                    SUM((COALESCE(p.sale_price, p.price) + COALESCE(v.price_modifier, 0)) * c.quantity),
-                    0
-                ) AS subtotal
-            FROM cart c
-            JOIN products p 
-                ON c.product_id = p.id
-            LEFT JOIN product_variants v 
-                ON c.variant_id = v.id
-            WHERE c.user_id = ? AND p.is_active = 1
-        ";
-        
-        return $this->db->fetch($sql, [$userId]);
+        // Fetch cart items with dynamic discount applied
+        $items = $this->getUserCart($userId);
+
+        $itemCount   = count($items);
+        $totalItems  = 0;
+        $subtotal    = 0.0;
+
+        foreach ($items as $item) {
+            $effectivePrice = (float)($item['sale_price'] ?? $item['product_price']);
+            $effectivePrice += (float)($item['price_modifier'] ?? 0);
+            $qty = (int)$item['quantity'];
+            $totalItems += $qty;
+            $subtotal   += $effectivePrice * $qty;
+        }
+
+        return [
+            'item_count'  => $itemCount,
+            'total_items' => $totalItems,
+            'subtotal'    => round($subtotal, 2),
+        ];
     }
     
     /**
@@ -244,9 +276,10 @@ class Cart extends Model
         $checkoutItems = [];
         
         foreach ($items as $item) {
+            // sale_price already has global offer applied via getUserCart()
             $price = $item['sale_price'] ?? $item['product_price'];
             if ($item['variant_id']) {
-                $price += $item['price_modifier'];
+                $price += (float)($item['price_modifier'] ?? 0);
             }
             
             // Build variant_name with color-first format: "Color / Size"
@@ -272,15 +305,15 @@ class Cart extends Model
             }
             
             $checkoutItems[] = [
-                'product_id' => $item['product_id'],
-                'variant_id' => $item['variant_id'],
+                'product_id'   => $item['product_id'],
+                'variant_id'   => $item['variant_id'],
                 'product_name' => $item['product_name'],
                 'variant_name' => $variantName,
-                'size_value' => $item['size_value'] ?? null,
-                'color_value' => $item['color_value'] ?? null,
-                'quantity' => $item['quantity'],
-                'price' => $price,
-                'subtotal' => $price * $item['quantity'],
+                'size_value'   => $item['size_value'] ?? null,
+                'color_value'  => $item['color_value'] ?? null,
+                'quantity'     => $item['quantity'],
+                'price'        => $price,
+                'subtotal'     => $price * $item['quantity'],
             ];
         }
         

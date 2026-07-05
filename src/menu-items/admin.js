@@ -1,5 +1,5 @@
 // assets
-import { Home2, Box1, Category, ShoppingCart, People, Star1, Chart, Setting2, Scan, MessageText1, Truck, Send } from 'iconsax-react';
+import { Home2, Box1, Category, ShoppingCart, People, Star1, Chart, Setting2, Scan, MessageText1, Truck, Send, Monitor, Tag } from 'iconsax-react';
 
 // icons
 const icons = {
@@ -14,7 +14,9 @@ const icons = {
   inventory: Scan,
   contact: MessageText1,
   shipping: Truck,
-  newsletter: Send
+  newsletter: Send,
+  header: Monitor,
+  offer: Tag
 };
 
 // ==============================|| MENU ITEMS - ADMIN ||============================== //
@@ -31,6 +33,13 @@ const admin = {
       url: '/dashboard',
       icon: icons.dashboard,
       breadcrumbs: false
+    },
+    {
+      id: 'global-offer',
+      title: 'Global Offer',
+      type: 'item',
+      url: '/dashboard/global-offer',
+      icon: icons.offer
     },
     {
       id: 'products-management',
@@ -101,14 +110,21 @@ const admin = {
       type: 'item',
       url: '/dashboard/shipping-governorates',
       icon: icons.shipping
+    },
+    {
+      id: 'header-settings',
+      title: 'Header Settings',
+      type: 'item',
+      url: '/dashboard/header-settings',
+      icon: icons.header
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      type: 'item',
+      url: '/dashboard/settings',
+      icon: icons.settings
     }
-    // {
-    //   id: 'settings',
-    //   title: 'Settings',
-    //   type: 'item',
-    //   url: '/dashboard/settings',
-    //   icon: icons.settings
-    // }
   ]
 };
 

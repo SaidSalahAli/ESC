@@ -17,7 +17,7 @@ const openedMixin = (theme) => ({
     boxShadow: theme.customShadows.z1
   }),
 
-  overflowX: 'hidden',
+  overflow: 'hidden',   // content Box handles its own scroll
 
   transition: theme.transitions.create('width', {
     easing: theme.transitions.easing.sharp,

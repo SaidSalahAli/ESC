@@ -181,5 +181,27 @@ export const adminService = {
   deleteProductImage: async (productId, imageId) => {
     const response = await axios.delete(`/api/admin/products/${productId}/images/${imageId}`);
     return response.data;
+  },
+
+  // Header Settings
+  getHeaderSettings: async () => {
+    const response = await axios.get('/api/settings');
+    return response.data;
+  },
+
+  updateHeaderSettings: async (settingsData) => {
+    const response = await axios.put('/api/admin/header-settings', settingsData);
+    return response.data;
+  },
+
+  // Global Offer
+  getGlobalOffer: async () => {
+    const response = await axios.get('/api/admin/global-offer');
+    return response.data;
+  },
+
+  updateGlobalOffer: async (offerData) => {
+    const response = await axios.put('/api/admin/global-offer', offerData);
+    return response.data;
   }
 };
