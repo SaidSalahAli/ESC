@@ -655,6 +655,162 @@ class AdminController
     }
 
     /**
+     * Get all reviews (with filter)
+     */
+    public function allReviews(Request $request)
+    {
+        try {
+            $page  = (int)$request->input('page', 1);
+            $limit = (int)$request->input('limit', 20);
+            $offset = ($page - 1) * $limit;
+            $status = $request->input('status', 'all'); // all | pending | approved
+
+            $db = \App\Core\Database::getInstance();
+
+            $whereClause = '';
+            $params = [];
+
+            if ($status === 'pending') {
+                $whereClause = 'WHERE (r.is_approved = 0 OR r.is_approved IS NULL)';
+            } elseif ($status === 'approved') {
+                $whereClause = 'WHERE r.is_approved = 1';
+            }
+
+            $sql = "
+                SELECT
+                    r.*,
+                    u.first_name,
+                    u.last_name,
+                    u.email,
+                    p.name as product_name,
+                    p.slug as product_slug
+                FROM reviews r
+                LEFT JOIN users u ON r.user_id = u.id
+                JOIN products p ON r.product_id = p.id
+                {$whereClause}
+                ORDER BY r.created_at DESC
+                LIMIT ? OFFSET ?
+            ";
+            $params[] = $limit;
+            $params[] = $offset;
+            $reviews = $db->fetchAll($sql, $params);
+
+            // Count
+            $countWhere = '';
+            if ($status === 'pending') {
+                $countWhere = 'WHERE (r.is_approved = 0 OR r.is_approved IS NULL)';
+            } elseif ($status === 'approved') {
+                $countWhere = 'WHERE r.is_approved = 1';
+            }
+            $countSql = "SELECT COUNT(*) as total FROM reviews r JOIN products p ON r.product_id = p.id {$countWhere}";
+            $countResult = $db->fetch($countSql);
+            $total = $countResult['total'] ?? 0;
+
+            return Response::success([
+                'reviews' => $reviews,
+                'pagination' => [
+                    'page'  => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'pages' => ceil($total / $limit),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return Response::error('Failed to fetch reviews: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Create review directly (admin bypass - no purchase check)
+     */
+    public function createAdminReview(Request $request)
+    {
+        $validator = new Validator($request->all(), [
+            'product_id' => 'required|integer',
+            'rating'     => 'required|integer|in:1,2,3,4,5',
+            'comment'    => 'required|min:5',
+        ]);
+
+        if (!$validator->validate()) {
+            return Response::validationError($validator->errors());
+        }
+
+        try {
+            $productId = (int)$request->input('product_id');
+            $product   = $this->productModel->find($productId);
+
+            if (!$product) {
+                return Response::notFound('Product not found');
+            }
+
+            $db = \App\Core\Database::getInstance();
+
+            // Use admin user_id or find by email
+            $adminUserId = $request->user_id;
+            $customEmail = $request->input('reviewer_email');
+            $customName  = $request->input('reviewer_name');
+
+            // If a custom user email is provided, find that user
+            $userId = $adminUserId;
+            if ($customEmail) {
+                $userRow = $db->fetch("SELECT id FROM users WHERE email = ? LIMIT 1", [$customEmail]);
+                if ($userRow) {
+                    $userId = $userRow['id'];
+                }
+            }
+
+            $data = [
+                'product_id'          => $productId,
+                'user_id'             => $userId,
+                'rating'              => (int)$request->input('rating'),
+                'title'               => $request->input('title', ''),
+                'comment'             => $request->input('comment'),
+                'is_verified_purchase'=> 0,
+                'is_approved'         => 1, // Admin reviews are auto-approved
+            ];
+
+            $reviewId = $this->reviewModel->create($data);
+
+            if (!$reviewId) {
+                return Response::error('Failed to create review');
+            }
+
+            $review = $db->fetch(
+                "SELECT r.*, u.first_name, u.last_name, u.email, p.name as product_name
+                 FROM reviews r
+                 LEFT JOIN users u ON r.user_id = u.id
+                 JOIN products p ON r.product_id = p.id
+                 WHERE r.id = ?",
+                [$reviewId]
+            );
+
+            return Response::success($review, 'Review created successfully', 201);
+        } catch (\Exception $e) {
+            return Response::error('Failed to create review: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Delete review (admin)
+     */
+    public function deleteReview(Request $request, $reviewId)
+    {
+        try {
+            $review = $this->reviewModel->find($reviewId);
+
+            if (!$review) {
+                return Response::notFound('Review not found');
+            }
+
+            $this->reviewModel->delete($reviewId);
+
+            return Response::success(null, 'Review deleted successfully');
+        } catch (\Exception $e) {
+            return Response::error('Failed to delete review: ' . $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
      * Approve review
      */
     public function approveReview(Request $request, $reviewId)

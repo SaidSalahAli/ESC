@@ -77,10 +77,22 @@ export const adminService = {
   },
 
   // Reviews
+  getAllReviews: async (page = 1, limit = 20, status = 'all') => {
+    const response = await axios.get('/api/admin/reviews', {
+      params: { page, limit, status }
+    });
+    return response.data;
+  },
+
   getPendingReviews: async (page = 1, limit = 20) => {
     const response = await axios.get('/api/admin/reviews/pending', {
       params: { page, limit }
     });
+    return response.data;
+  },
+
+  createAdminReview: async (reviewData) => {
+    const response = await axios.post('/api/admin/reviews', reviewData);
     return response.data;
   },
 
@@ -91,6 +103,11 @@ export const adminService = {
 
   rejectReview: async (reviewId) => {
     const response = await axios.post(`/api/admin/reviews/${reviewId}/reject`);
+    return response.data;
+  },
+
+  deleteReview: async (reviewId) => {
+    const response = await axios.delete(`/api/admin/reviews/${reviewId}`);
     return response.data;
   },
 

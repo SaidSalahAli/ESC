@@ -157,9 +157,12 @@ $router->put('/admin/categories/{categoryId}', AdminController::class, 'updateCa
 $router->delete('/admin/categories/{categoryId}', AdminController::class, 'deleteCategory', [AdminMiddleware::class]);
 
 // Review Management
+$router->get('/admin/reviews', AdminController::class, 'allReviews', [AdminMiddleware::class]);
 $router->get('/admin/reviews/pending', AdminController::class, 'pendingReviews', [AdminMiddleware::class]);
+$router->post('/admin/reviews', AdminController::class, 'createAdminReview', [AdminMiddleware::class]);
 $router->post('/admin/reviews/{reviewId}/approve', AdminController::class, 'approveReview', [AdminMiddleware::class]);
 $router->post('/admin/reviews/{reviewId}/reject', AdminController::class, 'rejectReview', [AdminMiddleware::class]);
+$router->delete('/admin/reviews/{reviewId}', AdminController::class, 'deleteReview', [AdminMiddleware::class]);
 
 // Settings Management
 $router->put('/admin/settings/shipping-cost', AdminController::class, 'updateShippingCost');

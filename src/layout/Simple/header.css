@@ -164,6 +164,7 @@
   transition: all 0.3s ease;
   gap: 6px;
 }
+
 .right-section.right-white button,
 .right-section.right-white a {
   color: var(--esc-bg-light);
@@ -192,6 +193,7 @@
 .search-btn:hover {
   background: rgba(11, 18, 19, 0.05);
 }
+
 login-btn
 
 /* Cart Button */
@@ -310,9 +312,11 @@ login-btn
   .nav-container {
     padding: 0.8rem 1.2rem;
   }
+
   .mobile-menu-btn {
     display: block;
   }
+
   .logo img {
     height: 36px;
   }
@@ -677,13 +681,16 @@ login-btn
     font-size: 0.95rem;
   }
 }
+
 /* Professional Dot Pulse Animation */
 @keyframes professionalDotPulse {
+
   0%,
   100% {
     opacity: 0.3;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.2);
@@ -748,8 +755,7 @@ login-btn
     font-size: 1rem;
   }
 
-  .nav-container {
-  }
+  .nav-container {}
 }
 
 /* Register Button Styles */
@@ -835,6 +841,7 @@ login-btn
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -957,6 +964,7 @@ login-btn
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1527,12 +1535,14 @@ login-btn
     max-width: 1400px;
     margin: 0 auto;
   }
+
   .logo {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: flex-start;
   }
+
   .nav-links {
     flex: 1 1 auto;
     display: flex;
@@ -1542,6 +1552,7 @@ login-btn
     font-size: 1.25rem;
     font-weight: 500;
   }
+
   .nav-links a {
     color: #333;
     text-decoration: none;
@@ -1549,10 +1560,12 @@ login-btn
     padding: 0.2rem 0.7rem;
     border-radius: 4px;
   }
+
   .nav-links a.active {
     color: var(--esc-accent);
     background: rgba(74, 175, 163, 0.12);
   }
+
   /* Hover effect only on home page */
   .nav-links.home-page-links a.active,
   .nav-links.home-page-links a:hover {
@@ -1560,6 +1573,7 @@ login-btn
     /* font-size: 14px; */
     background: rgba(74, 175, 163, 0.12);
   }
+
   .right-section {
     flex: 0 0 auto;
     display: flex;
@@ -1571,9 +1585,11 @@ login-btn
     display: flex;
     color: white;
   }
+
   button {
     background-color: #eee;
   }
+
   .search-btn {
     background: none;
     border: none;
@@ -1584,9 +1600,11 @@ login-btn
     align-items: center;
     transition: color 0.2s;
   }
+
   .search-btn:hover {
     color: var(--esc-accent);
   }
+
   .cart-btn {
     color: #222;
     font-size: 1.1rem;
@@ -1598,6 +1616,7 @@ login-btn
       border-bottom 0.2s;
     position: relative;
   }
+
   .cart-btn:hover {
     color: var(--esc-accent);
     border-bottom: 2px solid var(--esc-accent);
@@ -1611,20 +1630,21 @@ login-btn
 
 /* Announcement Bar Styles */
 .announcement-bar {
-  background: linear-gradient(135deg, #0b1213 0%, #152224 100%);
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
   color: #ffffff;
-  padding: 8px 1.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 10px 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-align: center;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  height: 40px;
+  height: 48px;
   box-sizing: border-box;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .announcement-bar.hidden {
@@ -1666,27 +1686,26 @@ login-btn
 }
 
 .time-unit {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 2px 8px;
   border-radius: 4px;
   display: inline-flex;
   align-items: baseline;
   gap: 2px;
-  min-width: 32px;
+  min-width: 34px;
   justify-content: center;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .time-num {
   font-weight: 700;
-  color: var(--esc-primary, #3f876f);
   font-family: 'Courier New', Courier, monospace;
 }
 
 .time-label {
   font-size: 0.65rem;
-  opacity: 0.7;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 @media (max-width: 768px) {
@@ -1694,10 +1713,12 @@ login-btn
     height: auto;
     padding: 6px 1rem;
   }
+
   .announcement-bar.hidden {
     height: 0;
     padding: 0;
   }
+
   .announcement-content {
     flex-direction: column;
     gap: 6px;
@@ -1734,4 +1755,3 @@ login-btn
   z-index: 10 !important;
   transform: none !important;
 }
-
